@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.4
+# v0.20.17
 
 using Markdown
 using InteractiveUtils
@@ -7,7 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     #! format: off
-    quote
+    return quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
@@ -21,12 +21,6 @@ using PlutoUI, PlutoTeachingTools
 
 # ╔═╡ d95087d2-afa2-408a-9de9-ea84c561a592
 md"> Astro 528: High-Performance Scientific Computing for Astrophysics (Fall 2025)"
-
-# ╔═╡ 2867a52d-647d-48f1-8c45-e4878f681ec4
-ChooseDisplayMode()
-
-# ╔═╡ b97be224-88ed-432c-9542-f5e0d706cd1e
-md"ToC on side $(@bind toc_aside CheckBox(;default=true))"
 
 # ╔═╡ e2abb125-d648-4730-b30d-f42e17d70b44
 md"""
@@ -110,10 +104,8 @@ md"""
 ### Parallelizing code efficiently
 - Shared-memory (e.g., one workstation)
 - Distributed-memory (e.g., cluster)
-- Accelerators
-   + GPUs
-- Cloud
-
+- Accelerators (e.g., GPUs)
+- Cloud computing
 """
 
 # ╔═╡ e800a4db-0e3e-4d92-b847-c41bec76c0d1
@@ -167,6 +159,12 @@ md"""
 md"""
 ## Setup
 """
+
+# ╔═╡ 2867a52d-647d-48f1-8c45-e4878f681ec4
+WidthOverDocs()
+
+# ╔═╡ b97be224-88ed-432c-9542-f5e0d706cd1e
+md"ToC on side $(@bind toc_aside CheckBox(;default=true))"
 
 # ╔═╡ 744a4b67-0d7e-45aa-a165-c1b2a4c6fdea
 TableOfContents(aside=toc_aside)
@@ -521,8 +519,6 @@ version = "17.4.0+2"
 
 # ╔═╡ Cell order:
 # ╟─d95087d2-afa2-408a-9de9-ea84c561a592
-# ╟─2867a52d-647d-48f1-8c45-e4878f681ec4
-# ╟─b97be224-88ed-432c-9542-f5e0d706cd1e
 # ╟─e2abb125-d648-4730-b30d-f42e17d70b44
 # ╟─2417f3e9-b640-4a29-aa81-c97ae5f4f21a
 # ╟─4be88601-bbe0-400c-ad5a-9c13fbffc66b
@@ -537,6 +533,8 @@ version = "17.4.0+2"
 # ╟─4b5218b8-1862-44b1-b01f-770eee941e4f
 # ╟─b3ca1f70-d522-4d34-857a-30f682658573
 # ╟─33336c3a-4270-45f8-a6cd-fd960e8d47c5
+# ╟─2867a52d-647d-48f1-8c45-e4878f681ec4
+# ╟─b97be224-88ed-432c-9542-f5e0d706cd1e
 # ╟─bc0cb76b-2d21-4e6a-afa4-d9e25c7133ba
 # ╟─744a4b67-0d7e-45aa-a165-c1b2a4c6fdea
 # ╟─00000000-0000-0000-0000-000000000001

@@ -35,15 +35,6 @@ end
 # ╔═╡ 0b431bf7-1f57-40c4-ad0c-012cbdbf9528
 md"> Astro 528: High-Performance Scientific Computing for Astrophysics (Fall 2025)"
 
-# ╔═╡ a21b553b-eecb-4105-a0ed-d936e500788b
-WidthOverDocs()
-
-# ╔═╡ afe9b7c1-d031-4e1f-bd5b-5aeed30d7048
-md"ToC on side $(@bind toc_aside CheckBox(;default=true))"
-
-# ╔═╡ 080d3a94-161e-4482-9cf4-b82ffb98d0ed
-TableOfContents(aside=toc_aside)
-
 # ╔═╡ 0b4ae83b-290e-46f5-854d-01db4c754187
 md"""
 ## Setup Accounts
@@ -64,14 +55,6 @@ md"""
 - Programming languages (depending on on time)
 - Start on Labs
 ---
-"""
-
-# ╔═╡ b4c65258-452d-4d09-b040-dfbde3d4baab
-md"""
-## Introductions
-- Eric Ford, Professor
-- Kyle Neumann, TA:  Will help during labs
-- Emery Etter, ICDS RISE Team member:  Can help with setup issues on Lynx cluster
 """
 
 # ╔═╡ 17afed3c-4f28-424d-9758-a483fa1de279
@@ -338,6 +321,15 @@ md"# Questions about Lab"
 
 # ╔═╡ 8759b216-cc38-42ed-b85c-04d508579c54
 md"# Helper Code"
+
+# ╔═╡ a21b553b-eecb-4105-a0ed-d936e500788b
+WidthOverDocs()
+
+# ╔═╡ afe9b7c1-d031-4e1f-bd5b-5aeed30d7048
+md"ToC on side $(@bind toc_aside CheckBox(;default=true))"
+
+# ╔═╡ 080d3a94-161e-4482-9cf4-b82ffb98d0ed
+TableOfContents(aside=toc_aside)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1614,7 +1606,6 @@ version = "1.9.2+0"
 # ╟─0b431bf7-1f57-40c4-ad0c-012cbdbf9528
 # ╟─0b4ae83b-290e-46f5-854d-01db4c754187
 # ╟─959f2c12-287c-4648-a585-0c11d0db812d
-# ╟─b4c65258-452d-4d09-b040-dfbde3d4baab
 # ╟─17afed3c-4f28-424d-9758-a483fa1de279
 # ╟─354621a9-9ab1-4bbf-84a1-4d86c2696933
 # ╟─ade401f7-fa34-42b4-a8e1-e0949561f9cb
@@ -1631,7 +1622,7 @@ version = "1.9.2+0"
 # ╟─a41741e6-039d-4a80-a9f0-10f447589880
 # ╟─379aa32c-7914-4da5-a2d4-201a0acf2115
 # ╟─98d31fcb-232f-4313-a17f-270dfc56d50e
-# ╠═fed5c970-9ba4-4acb-b2ae-223ee40792b3
+# ╟─fed5c970-9ba4-4acb-b2ae-223ee40792b3
 # ╠═6d3acd2f-0854-49bf-807a-2b10d00b804d
 # ╠═f81e772f-00b6-4c61-b7a3-de6f96ca7c83
 # ╠═3c700749-ea91-41cb-badc-d42e7399eb0b

@@ -25,10 +25,14 @@ md"> Astro 528: High-Performance Scientific Computing for Astrophysics (Fall 202
 # ╔═╡ e2abb125-d648-4730-b30d-f42e17d70b44
 md"""
 # Welcome
+"""
 
-#### Penn State Astro 528
-#### High-Performance Scientific Computing for Astrophysics
-#### Eric Ford
+# ╔═╡ d23b0e20-1e5a-4eaa-8a15-f853035c2b30
+md"""
+## Introductions
+- Eric Ford, Professor
+- Kyle Neumann, TA:  Will help during labs
+- Emery Etter, ICDS RISE Team member:  Can help with setup issues on Lynx cluster
 """
 
 # ╔═╡ 2417f3e9-b640-4a29-aa81-c97ae5f4f21a
@@ -141,13 +145,10 @@ $(RobustLocalResource("https://psuastro528.github.io/Fall2025/assets/week1/textb
 - Online tutorials
 """
 
-# ╔═╡ 4b5218b8-1862-44b1-b01f-770eee941e4f
+# ╔═╡ 515fefb0-20db-4467-8135-de2cb5dd33f5
 md"""
-## Introductions
-- Let's learn from each other
-   + Name (& pronouns if you like)
-   + Department (if not Astro)
-   + Year of your program
+## Logistics
+- Read [Syllabus](https://psuastro528.github.io/Fall2025/syllabus/)
 """
 
 # ╔═╡ b3ca1f70-d522-4d34-857a-30f682658573
@@ -520,6 +521,7 @@ version = "17.4.0+2"
 # ╔═╡ Cell order:
 # ╟─d95087d2-afa2-408a-9de9-ea84c561a592
 # ╟─e2abb125-d648-4730-b30d-f42e17d70b44
+# ╟─d23b0e20-1e5a-4eaa-8a15-f853035c2b30
 # ╟─2417f3e9-b640-4a29-aa81-c97ae5f4f21a
 # ╟─4be88601-bbe0-400c-ad5a-9c13fbffc66b
 # ╟─9cde803b-22ae-4b03-a118-5a9f82746fbb
@@ -530,7 +532,7 @@ version = "17.4.0+2"
 # ╟─e800a4db-0e3e-4d92-b847-c41bec76c0d1
 # ╟─c71489e5-eeee-479b-87ac-a4bec27c3042
 # ╟─4b25c6c9-4d71-41c4-b1c5-43bc93990c91
-# ╟─4b5218b8-1862-44b1-b01f-770eee941e4f
+# ╟─515fefb0-20db-4467-8135-de2cb5dd33f5
 # ╟─b3ca1f70-d522-4d34-857a-30f682658573
 # ╟─33336c3a-4270-45f8-a6cd-fd960e8d47c5
 # ╟─2867a52d-647d-48f1-8c45-e4878f681ec4

@@ -311,14 +311,6 @@ md"""
 
 """
 
-# ╔═╡ cb7b97fa-ccee-4061-9b10-a03dd25fb8e0
-md"""
-# Class Logistics
-"""
-
-# ╔═╡ 1ce7ef5b-c213-47ba-ac96-9622b62cda61
-md"# Questions about Lab"
-
 # ╔═╡ 8759b216-cc38-42ed-b85c-04d508579c54
 md"# Helper Code"
 
@@ -1649,8 +1641,6 @@ version = "1.9.2+0"
 # ╠═d7170965-0171-4662-8eab-7d856895d4b5
 # ╟─5362f60b-1b2c-400f-9205-c750e6fa8d47
 # ╟─4e53021f-19b6-4289-b79f-6770debc5e3c
-# ╟─cb7b97fa-ccee-4061-9b10-a03dd25fb8e0
-# ╟─1ce7ef5b-c213-47ba-ac96-9622b62cda61
 # ╟─8759b216-cc38-42ed-b85c-04d508579c54
 # ╟─a21b553b-eecb-4105-a0ed-d936e500788b
 # ╟─afe9b7c1-d031-4e1f-bd5b-5aeed30d7048

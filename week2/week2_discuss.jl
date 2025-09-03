@@ -22,6 +22,7 @@ begin
 	using Unitful, UnitfulAstro
 	using FixedSizeArrays, Collects
 	using StaticArrays, FillArrays, LazyArrays, StructArrays, ElasticArrays
+	using SmartAsserts
 	using BenchmarkTools
 end
 
@@ -72,6 +73,30 @@ md"""
 # Testing
 """
 
+# ╔═╡ c5281325-7037-4d5c-aa63-b61b5b8baee8
+md"""
+## Unit tests
+- Verify that each function (object, type, etc.) work as expected.
+- Typically many small unit tests
+- Can be run quickly & frequently
+- Try to anticipate edge cases
+- Turn bugs into new unit tests
+
+## Integration tests
+- Tests interactions between two functions (objects, libraries, etc.).
+- Many bugs occur in code connecting different libraries/packages
+- E.g., Units, zero-points, order of function arguements
+- Package updates common source of bugs detectable with integration tests
+
+## End-to-end tests
+- Test entire program/workflow
+- Can be a backup test to catch anything which wasn't explicitly tested above
+
+## Regression tests
+- Makes sure that code updates don't introduce bugs
+- Can write regression tests for performance or documentation
+"""
+
 # ╔═╡ 57af4c4c-21ac-43a9-8d17-00f8fdb903f8
 blockquote(md"""
 When should we use "unit tests", "integration tests", or "regression tests"?
@@ -81,7 +106,11 @@ When should we use "unit tests", "integration tests", or "regression tests"?
 md"""
 - Unit tests: Nearly always 
 - Integration tests:  At a minimum, when you combine two codes/libraries that weren't intended to be combined.
-- Regression tests:  When you have an accurate answer to compare to (and it's not computationally impractical)
+- Regression tests:  
+   - When you have an accurate answer to compare to, and...
+   - it's not computationally impractical.
+   - Even if don't know correct answer, can check when outputs change unexpectedly.
+
 """
 
 # ╔═╡ 9cdcafc0-520c-48e6-9b14-3cedbb532d49
@@ -128,28 +157,106 @@ md"""
 # ╔═╡ 7b51032e-ec09-4d08-94b8-f359c7093520
 md"""
 ## Conditions
+
+### Pre-conditions
+Do the input arguements to your function match expecations?
+Examples:  
+- Min/maximum values for parameters
+- Sizes of vectors/arrays match (when they should)
+- Number of dimensions in arrays match expectations
+
+### Post-conditions
+Do the outputs of your function fit within the domain of applicability?
 """
 
-# ╔═╡ 0663361f-85d4-46e5-b306-7a4efbeb5888
-blockquote(md"""
-How do you decide how many conditions to introduce into coding without, (1) it not being general enough to use for another project, (2) without going overboard?
+# ╔═╡ 182797b9-41f4-48a0-a265-e35a60f0eafd
+md"""
+## Cost of adding assertions?
+
+### Compile-time conditions
+- Many preconditions can be enforced at compile time.  Compare:
+```julia
+add_two_arrays(x, y) = x+y
+
+add_two_arrays(x::Vector, y::Vector) = x+y
+
+add_two_arrays(x::Vector{T}, y::Vector{T}) where { T<: Real } = x+y
+
+function add_two_arrays(x::Vector, y::Vector)
+	z = x+y
+	@assert eltype(z) <: Real
+	return z
+end
+```
+
+### Run-time pre-conditions
+- Some conditions need to be checked at runtime, but are very fast ($O(1)$), e.g.,
+```julia 
+function add_two_arrays(x::Vector, y::Vector)
+	@assert length(x) == length(y)
+	z = x+y
+end
+```
+- When branches are correclty predicted by CPU, is often effectively free.
+
+Some preconditions require accessing every element of an array ($O(N)$).  E.g.,
+```julia 
+function add_two_arrays(x::Vector, y::Vector)
+	@assert length(x) == length(y)
+	@assert !any(isnan.(x))
+	@assert !any(isnan.(y))
+	z = x+y
+	min_z, max_z = extrema(z)
+	@assert 0 <= min_z <= max_z < Inf
+	return z
+end
+```
+
+```
+- If you're going to read every element of the array anyway, then the cost might be neglible (if they fit in cache)
+- If you were only going to access a small portion of a large array, then the cost could be substantial. 
+- Performance can depend on types (e.g., `Vector{Float64}` vs List from `DataStructures.jl`)
+"""
+
+# ╔═╡ 00f3f360-6cfe-40b4-b4f2-9891ea611f2f
+md"""
+#### If significant calculations required for a pre/post-condition, then then cost could be significant/prohibitive (e.g., $O(N^2)$ or worse).
+```julia
+@assert solve(A\y == x)
+```
+"""
+
+# ╔═╡ e49eb35f-fecf-4b67-a005-de7239573ed7
+question_box(md"""How could you get the benefits of this test at minimal cost?
 """)
 
-# ╔═╡ d09e35c4-3ad1-41a0-b00b-048d2ba9cfd8
-md"""
-What are you assuming when you write the function?  
+# ╔═╡ eec4b4ec-3440-47bd-af10-fba22faa4970
+hint(md"""
+- Can add an optional parameter to turn extra assertions/debugging info on/off.
 
-It's usually a good idea to document that. 
-"""
+```julia
+function add_two_arrays(x::Vector, y::Vector; debug::Int64 = 0)
+	 if debug > 0
+	 	@assert length(x) == length(y)
+	 end
+	 if debug >= 10
+	 	@assert !any(isnan.(x))
+	 	@assert !any(isnan.(y))
+	 	@assert !any(ismissing.(x))
+	 	@assert !any(ismissing.(y))
+	 end
+	 return x+y
+end	 
+```
+	 
+- Write your own macro to allow easily turning many on-off all at once (e.g.,  [SmartAsserts.jl](https://github.com/MrVPlusOne/SmartAsserts.jl)).
+- Can turn off all `@smart_assert`'s be adding one line `SmartAsserts.set_enabled(false)`.
+""")
 
 # ╔═╡ 4d552810-41ca-4db7-b3a2-67426d542b7b
 md"""
-## How much to "document" code?
+## Documenting code
 """
-
-
-# ╔═╡ 33a78999-2e97-42ae-b563-6ec492e48bb4
-blockquote(md"""I don't want to spend time solving a problem that isn't even a problem.  Would it make more sense to just focus on commenting and "proper documentation"?  """)
 
 
 # ╔═╡ 0d6f4e52-7d0d-49fa-98f9-bbdf04fc8643
@@ -189,13 +296,45 @@ function my_add(a,b)
 	a+b 
 end
 
-# ╔═╡ ae5589ab-eb85-4240-9cd5-c1ed2663106d
-md"""
-## Generic vs problem-specific code
-How should we balance writing code that is general purpose (i.e. flexible) vs. writing code that is problem specific and then adapting it later for new problems
-?
+# ╔═╡ b40ec4d6-c867-4b57-9541-3152814b71ee
+my_function_to_add_two_numbers(1,2)
 
-It is not always clear (or possible to know) what we need our programs to do next.
+# ╔═╡ ae211ee3-e057-48ac-8fa9-1229fc50c0ea
+my_add(3,4)
+
+# ╔═╡ 0663361f-85d4-46e5-b306-7a4efbeb5888
+blockquote(md"""
+How do you decide how many conditions to write in your code without going overboard?
+""")
+
+# ╔═╡ d09e35c4-3ad1-41a0-b00b-048d2ba9cfd8
+md"""
+What are you assuming when you write the function?  
+
+It's usually a good idea to document that. 
+"""
+
+# ╔═╡ 33a78999-2e97-42ae-b563-6ec492e48bb4
+blockquote(md"""I don't want to spend time solving a problem that isn't even a problem.  Would it make more sense to just focus on commenting and "proper documentation"?  """)
+
+
+# ╔═╡ 74a92bc8-f145-4ae4-a42c-017ff22f5b37
+md"""
+# Generic Programming
+"""
+
+# ╔═╡ 37c7172b-3dc5-4b9c-99eb-5da72b960179
+md"""
+Compare: `sort(x::Vector{Float64})` vs `sort(x::Vector{Real})` vs `sort(x::Vector{Number})`
+"""
+
+# ╔═╡ 96321b1d-56f6-4895-a138-927fe0581684
+blockquote(md"""How should we balance writing code that is general purpose vs. first writing code that is problem-specific and then adapting it later for new problems?""")
+
+# ╔═╡ 4c92fb61-0ed5-4714-8313-af2b1f69d324
+md"""
+- It is not always clear (or possible to know) what we need our programs to do next.
+- Writing generic code can require thinking more deeply about the problem.
 """
 
 # ╔═╡ 17808a9d-e29a-427f-819e-aaecee522c59
@@ -207,20 +346,9 @@ accommodate new analyses.
 If I try to write all-purpose functions from the get-go, I get caught up in trying to figure out what I might need my code to do in the future!
 """
 
-# ╔═╡ 74a92bc8-f145-4ae4-a42c-017ff22f5b37
-md"""
-# Opportunities for Generic Code
-Almost all the code I write is designed to accomplish a specific task.
-"""
-
-# ╔═╡ 6643d9fb-6c9e-440b-9658-f7237cc67743
-blockquote(md"""
-What are some ways to make your program more flexible when you're only writing it for one specific purpose at the time?
-""")
-
 # ╔═╡ b6c96f10-6587-47bc-87fb-a720cdc4ac4d
 hint(md"""
-#### Common ways to generlize code:
+#### Common ways to generalize code:
 - Type of numbers
 - Element type of collections
 - Dimensionality of arrays
@@ -628,6 +756,7 @@ LazyArrays = "5078a376-72f3-5289-bfd5-ec5146d43c02"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoTest = "cb4044da-4d16-4ffa-a6a3-8cad7f73ebdc"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+SmartAsserts = "56560af0-ab70-43fe-a531-155d81972b00"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
@@ -643,6 +772,7 @@ LazyArrays = "~2.6.2"
 PlutoTeachingTools = "~0.4.5"
 PlutoTest = "~0.2.2"
 PlutoUI = "~0.7.71"
+SmartAsserts = "~0.2.1"
 StaticArrays = "~1.9.14"
 StructArrays = "~0.6.18"
 Unitful = "~1.24.0"
@@ -655,7 +785,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "36a71b96dfb39c4aa25c7c5f7ba041ea35eb2ec8"
+project_hash = "91656d929e4c8980877046fe650588a7b42388d1"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -1050,6 +1180,11 @@ version = "0.7.0"
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
 
+[[deps.SmartAsserts]]
+git-tree-sha1 = "2b4ea02c4d9664d323e39d46ebba1419d8a6aa01"
+uuid = "56560af0-ab70-43fe-a531-155d81972b00"
+version = "0.2.1"
+
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
@@ -1207,13 +1342,14 @@ version = "17.4.0+2"
 # ╔═╡ Cell order:
 # ╟─0b431bf7-1f57-40c4-ad0c-012cbdbf9528
 # ╟─080d3a94-161e-4482-9cf4-b82ffb98d0ed
-# ╠═a21b553b-eecb-4105-a0ed-d936e500788b
+# ╟─a21b553b-eecb-4105-a0ed-d936e500788b
 # ╟─afe9b7c1-d031-4e1f-bd5b-5aeed30d7048
 # ╟─959f2c12-287c-4648-a585-0c11d0db812d
 # ╟─316b2027-b3a6-45d6-9b65-e26b4ab42e5e
 # ╟─d8ce73d3-d4eb-4d2e-b5e6-88afe0920a47
 # ╟─4ea1e5d1-36f8-41b8-88ec-23dc933b12c8
 # ╟─01ebcac9-daed-4dba-90a7-4ee02dc4221d
+# ╟─c5281325-7037-4d5c-aa63-b61b5b8baee8
 # ╟─57af4c4c-21ac-43a9-8d17-00f8fdb903f8
 # ╟─62b09b80-4984-4d49-82bb-6fea97272966
 # ╟─9cdcafc0-520c-48e6-9b14-3cedbb532d49
@@ -1221,18 +1357,25 @@ version = "17.4.0+2"
 # ╟─af90a2ec-c6cf-4603-a4ee-b22ea1ce85e9
 # ╟─65f1571b-1de2-475a-ac15-51961b57a440
 # ╟─7b51032e-ec09-4d08-94b8-f359c7093520
-# ╟─0663361f-85d4-46e5-b306-7a4efbeb5888
-# ╟─d09e35c4-3ad1-41a0-b00b-048d2ba9cfd8
+# ╟─182797b9-41f4-48a0-a265-e35a60f0eafd
+# ╟─00f3f360-6cfe-40b4-b4f2-9891ea611f2f
+# ╟─e49eb35f-fecf-4b67-a005-de7239573ed7
+# ╟─eec4b4ec-3440-47bd-af10-fba22faa4970
 # ╟─4d552810-41ca-4db7-b3a2-67426d542b7b
-# ╟─33a78999-2e97-42ae-b563-6ec492e48bb4
 # ╟─0d6f4e52-7d0d-49fa-98f9-bbdf04fc8643
 # ╠═9e9d5b7a-4768-47ba-985b-795fec6315b4
 # ╟─0843af3e-23b5-4d00-b2b5-4e514d01a842
 # ╠═d08ba78a-a5bd-4ce1-bd70-879a3f9fa044
-# ╟─ae5589ab-eb85-4240-9cd5-c1ed2663106d
-# ╟─17808a9d-e29a-427f-819e-aaecee522c59
+# ╠═b40ec4d6-c867-4b57-9541-3152814b71ee
+# ╠═ae211ee3-e057-48ac-8fa9-1229fc50c0ea
+# ╟─0663361f-85d4-46e5-b306-7a4efbeb5888
+# ╟─d09e35c4-3ad1-41a0-b00b-048d2ba9cfd8
+# ╟─33a78999-2e97-42ae-b563-6ec492e48bb4
 # ╟─74a92bc8-f145-4ae4-a42c-017ff22f5b37
-# ╟─6643d9fb-6c9e-440b-9658-f7237cc67743
+# ╟─37c7172b-3dc5-4b9c-99eb-5da72b960179
+# ╟─96321b1d-56f6-4895-a138-927fe0581684
+# ╟─4c92fb61-0ed5-4714-8313-af2b1f69d324
+# ╟─17808a9d-e29a-427f-819e-aaecee522c59
 # ╟─b6c96f10-6587-47bc-87fb-a720cdc4ac4d
 # ╟─6b6dae67-43de-461a-bb69-94e4950cd5e2
 # ╠═c6944314-4a09-49fe-94ce-6da00974e216

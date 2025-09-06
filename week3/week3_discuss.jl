@@ -48,8 +48,21 @@ md"""
 # ╔═╡ a1974ea8-5975-4312-9553-2972d9aef836
 md"""
 ## Project proposals
+### Mechanics
 - Link in Canvas to create starter repository.
 - Edit `proposal.md`.
+
+### Projects
+- Great if it's relevant to your research
+- Don't try to do an entire research project
+- Pick one (or a few) functions to focus on
+- Needs to have some problem size parameter that can be varried over a wide range:
+  + Number of objects
+  + Number of epochs
+  + Size of simulation
+  + Spatial resolution
+  + Temporal resolution
+- Ideally there's a meaningful way to scale to `N` ≳ 10³
 """
 
 # ╔═╡ d15a7131-96f3-4cd3-ac13-1c038c74759a
@@ -687,11 +700,6 @@ match(r"_(\d{8})\.fits","data_20230606.fits")
 # ╔═╡ 466aaaf9-3e94-488d-9594-17c4761ecb5f
 typeof(match(r"_(\d{4})\.fits","data_20230606.fits"))
 
-# ╔═╡ e7a5a559-6051-439a-980c-90bed8503eb8
-md"""
-# Random Questions
-"""
-
 # ╔═╡ 6f35d08f-46a9-4518-be97-48c82e3469fd
 question_box(md"""
 The chapter tells us that at the low level, we should optimize temporal locality and memory usage. What is an example of that being done?
@@ -700,6 +708,11 @@ The chapter tells us that at the low level, we should optimize temporal locality
 # ╔═╡ 266998ac-0f48-4881-bc14-1989da09079f
 md"""
 See matrix multiply example above and in Lab 3, Ex 1.
+"""
+
+# ╔═╡ e7a5a559-6051-439a-980c-90bed8503eb8
+md"""
+# Random Questions
 """
 
 # ╔═╡ 8016a7ef-ced4-4c44-8d36-400f8bc0b7fa

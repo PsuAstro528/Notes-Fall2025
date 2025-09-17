@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.17
+# v0.20.10
 
 using Markdown
 using InteractiveUtils
@@ -44,6 +44,7 @@ md"""
 - Priorities for Scientific Computing
 - Unit Testing
 - Documentation
+- Conditions
 - Generic Code
 """
 

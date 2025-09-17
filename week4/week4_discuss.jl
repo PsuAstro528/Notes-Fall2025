@@ -19,10 +19,14 @@ end
 # ╔═╡ 624e8936-de28-4e09-9a4e-3ef2f6c7d9b0
 begin
 	using PlutoUI, PlutoTest, PlutoTeachingTools
+	using StaticArrays, FixedSizeArrays
+	using BenchmarkTools 
 	using ForwardDiff
-	using StaticArrays, FixedSizeArrays, InlineStrings
-	using BenchmarkTools
 	using Plots
+	# Not demonstrated in notebook, but relevant to lesson
+	#using AllocCheck # For checking whether functions allocate to heap
+	#using Collects  # For storing iterables to FixedSizdArrays
+	#using InlineStrings # For efficient storage of arrays of String
 end
 
 # ╔═╡ cf5262da-1043-11ec-12fc-9916cc70070c
@@ -39,303 +43,21 @@ TableOfContents(aside=toc_aside)
 
 # ╔═╡ 9007f240-c88e-46c4-993d-fd6b93d8b18d
 md"""
-# Week 3 Admin Announcements
-## Lab exercises
-- Good work!
-- Review feedback on Lab 1 via GitHub
-"""
-
-# ╔═╡ a1974ea8-5975-4312-9553-2972d9aef836
-md"""
+# Week 4 Admin Announcements
 ## Project proposals
-### Mechanics
-- Link in Canvas to create starter repository.
-- Edit `proposal.md`.
-
-### Projects
-- Great if it's relevant to your research
-- Don't try to do an entire research project
-- Pick one (or a few) functions to focus on
-- Needs to have some problem size parameter that can be varried over a wide range:
-  + Number of objects
-  + Number of epochs
-  + Size of simulation
-  + Spatial resolution
-  + Temporal resolution
-- Ideally there's a meaningful way to scale to `N` ≳ 10³
-"""
-
-# ╔═╡ d15a7131-96f3-4cd3-ac13-1c038c74759a
-md"""
-## GitHub Classroom issue
-- Please try to follow link to create starter repositories by 9am Friday morning of lab.
-- If you get an error about permissions to access your own lab, send Kyle & I email with your github userid in the morning.
-- Then we can delete and remove you before class starts.
+### Feedback
+- Project repo, Pull requests, Feedback (either Conversation or Files view) 
+- I'll look for any replies once I've finished providing feedback to everyone.
 """
 
 # ╔═╡ 348ee204-546f-46c5-bf5d-7d4a761002ec
 md"""
-# Week 3 Discussion Topics
-- Priorities for Scientific Computing
-   + Increasing chances of correctness
-   + Documentation
-   + Premature Optimization
-   + Collaboration
-- Two-language problem
-- Expert/Non-expert Interfaces
+# Week 4 Discussion Topics
 - Memory heirarchy & allocations
-"""
-
-# ╔═╡ 3595815b-e42a-46cc-b28d-5972660ccbdf
-md"""
-# Priorities for Scientific Computing
-"""
-
-# ╔═╡ 70d864bc-e6ee-4a7c-aaf0-a4246b88a8c1
-md"""
-## Increasing chances of correctness
-### Writing modular code
-  - Write code as functions
-  - Test functions
-  - Use your functions
-  - Generic programming maximizes reuse
-
-When modularizing code, how does one go about efficiently organizing functions, constants, etc?
-"""
-
-# ╔═╡ 5e559757-07b4-490e-8908-69d1f3f06c00
-md"""
-### Reduce risk of misinterpretting inputs/outputs
-  + Descriptive variable/function names
-  + Assertions to document/enforce pre-conditions (and post-conditions)
-  + Specify types for function inputs
-```julia
-sqrt(x::Real)
-```
-  + [Named parameters/keyword arguments](https://docs.julialang.org/en/v1/manual/functions/#Keyword-Arguments)
-```julia
-function f_pass_args_by_position(time, ra, dec)
-	...
-end
-```
-vs
-```julia
-function f_pass_args_by_name(;time, ra, dec)
-	...
-end
-```
-```julia
-df = CSV.read("inputs.csv",DataFrame) 
-f_pass_args_by_position(df.JD, df.Ra, df.Dec)
-f_pass_args_by_name(;time=df.JD, ra=df.Ra, dec=df.Dec)
-```
-  + Passing/returning [NamedTuple](https://docs.julialang.org/en/v1/manual/types/#Named-Tuple-Types)'s or [composite types](https://docs.julialang.org/en/v1/manual/types/#Composite-Types) rather than several values
-```julia
-res = optimize(f, g!, init_guess, GradientDescent(),
-			Optim.Options(g_tol = 1e-12,
-                             iterations = 10,
-                             store_trace = true,
-                             show_trace = false,
-                             show_warnings = true))
-```
-
-"""
-
-# ╔═╡ 7d5369ed-fb7e-48f8-a56b-ceb50f9ba110
-protip(
-md"""
-#### Termination
-* `x_abstol`: Absolute tolerance in changes of the input vector `x`, in infinity norm. Defaults to `0.0`.
-* `x_reltol`: Relative tolerance in changes of the input vector `x`, in infinity norm. Defaults to `0.0`.
-* `f_abstol`: Absolute tolerance in changes of the objective value. Defaults to `0.0`.
-* `f_reltol`: Relative tolerance in changes of the objective value. Defaults to `0.0`.
-* `g_abstol`: Absolute tolerance in the gradient, in infinity norm. Defaults to `1e-8`. For gradient free methods, this will control the main convergence tolerance, which is solver specific.
-* `f_calls_limit`: A soft upper limit on the number of objective calls. Defaults to `0` (unlimited).
-* `g_calls_limit`: A soft upper limit on the number of gradient calls. Defaults to `0` (unlimited).
-* `h_calls_limit`: A soft upper limit on the number of Hessian calls. Defaults to `0` (unlimited).
-* `allow_f_increases`: Allow steps that increase the objective value. Defaults to `true`. Note that, when this setting is `true`, the last iterate will be returned as the minimizer even if the objective increased.
-* `successive_f_tol`: Determines the number of times the objective is allowed to increase across iterations. Defaults to 1.
-* `iterations`: How many iterations will run before the algorithm gives up? Defaults to `1_000`.
-* `time_limit`: A soft upper limit on the total run time. Defaults to `NaN` (unlimited).
-* `callback`: A function to be called during tracing. The return value should be a boolean, where `true` will stop the `optimize` call early. The callback function is called every `show_every`th iteration. If `store_trace` is false, the argument to the callback is of the type  [`OptimizationState`](https://github.com/JuliaNLSolvers/Optim.jl/blob/a1035134ca1f3ebe855f1cde034e32683178225a/src/types.jl#L155), describing the state of the current iteration. If `store_trace` is true, the argument is a list of all the states from the first iteration to the current.
-
-#### Progress printing and storage
-* `store_trace`: Should a trace of the optimization algorithm's state be stored? Defaults to `false`.
-* `show_trace`: Should a trace of the optimization algorithm's state be shown on `stdout`? Defaults to `false`.
-* `extended_trace`: Save additional information. Solver dependent. Defaults to `false`.
-* `trace_variables`: A tuple of variable names given as `Symbol`s to store in the trace. Defaults to `(,)`, which means all variables are included.
-* `show_warnings`: Should warnings due to NaNs or Inf be shown? Defaults to `true`.
-* `show_every`: Trace output is printed every `show_every`th iteration.
-* `trace_simplex`: Include the full simplex in the trace for `NelderMead`. Defaults to `false`.
-""", invite="What other options could I pass to optimize?")
-
-# ╔═╡ 1fa80b33-acc5-453b-a085-6dc619afe4a9
-md"""
-### Frequent Testing
-Even small changes can create bugs, so **test frequently**.
-
-- Use version control
-- Make and commit small changes
-- Test frequently (e.g., each push)
-- Notice when a test breaks
-- Turn bugs into tests
-- Setup continuous integration testing (when practical)
-"""
-
-# ╔═╡ 344a6230-1958-4e74-b739-396fa1171886
-md"""
-## Documentation
-#### What to Document?
-- Clearly written code can be a form of documentation!
-- Why add anything more?
-- Interfaces:  Inputs, outputs, pre/post-conditions
-- Reasons for design choices
-- **Limitations and assumptions**
-"""
-
-# ╔═╡ 03f85285-fa9d-4583-88fe-c8bd28f00138
-blockquote(md"What's the differnce between documentation & comments?")
-
-# ╔═╡ 5d5a6ca4-9e89-448d-b41f-1f52b9298021
-md"""
-- Commenting more ad hoc:
-   - Primarily for developers
-   - Might be very detailed, about implementation, etc.
-   - Typically inline
-- Documentation more formal:
-   - Primarily for users
-   - Primarily about interfaces
-   - Can be either separate or integrated
-- Double/Triple duty:
-   - Documentation generator will turn structured comments into pretty documentation
-   - Documentation generator can turn documentation into tests
-"""
-
-# ╔═╡ 5ccb3be3-55ee-4479-97bc-fa9e51d5d648
-md"""
-#### Documentation generators
-
-- [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl):  Standard for Julia.  Comments, Docs, examples & tests become one
-- [Doxygen](https://www.doxygen.nl/index.html): Good for object oriented codes in C++/Java/Python
-- Other documentation generators people like?
-"""
-
-# ╔═╡ babb5c0b-4dbe-4d4b-b9d4-52bdeb1a5802
-md"""
-## Collaboration
-A second set of eyes will ask different questions.  	
-- Pair coding
-- Peer code reviews
-- Test/review/approve prior to merging
-- [Track issues](https://guides.github.com/features/issues/)
-"""
-
-# ╔═╡ f86ae2fd-c286-4cae-979f-d1129fc4b131
-md"""
-## Your experiences
-- Testing
-- Collaboration
-- Documentation
-"""
-
-# ╔═╡ 75a4b3a1-d6c3-4d48-8f0f-87a92c46a499
-md"""
-# Two-language problem
-"Section 6 of "Best Practices for Scientific Computing" mentions that you should write code in the highest-level language possible and shift to lower languages if you find that the performance boost is needed. "
-
-This is an artifact of the *two-language* problem.
-"""
-
-# ╔═╡ 99e20a91-cfd5-4d03-8186-26b76868d412
-md"""
-## Scientific Computing Language Comparison
-![Scientific Computing Language Comparison](https://storopoli.github.io/Bayesian-Julia/pages/images/language_comparisons.svg)
-"""
-
-# ╔═╡ 22be7ad6-32d0-41e9-9a46-c9f530003623
-md"""
-## Quantitative Performance Comparisons for Microbenchmarks
-![Microbenchmarks for common programming languages](https://julialang.org/assets/images/benchmarks.svg)
-— from [Bayesian Julia](https://juliadatascience.io/julia_accomplish) and [JuliaLang.org](https://julialang.org/benchmarks/)
-"""
-
-# ╔═╡ 34f5a2a9-4609-47b8-a846-e4152cc642f0
-md"""## Why are other languages slower?
-- __Compiled__ languages:  Run fast, but not interactive 
-                       (multiple steps to compile, run, visualize, debug/tweak,...)
-- __Interpretted__ langauages: Interactive, but run $\sim10-10^3\times$ slower times (and use orders of magnitude more energy)
-- __Just-In-Time Compiled__ languages: Combine best of both 
-
-Examples of Just-in-time compiled languages:
-- Java
-- Jax
-- Julia
-
-Examples of languages with JIT compiler created afterwards
-- C/C++
-- CPython?
-- JavaScript
-- Lisp
-"""
-
-
-# ╔═╡ 39e70a34-1196-44fc-a009-1c1a4e858a24
-md"""
-- *tidyverse* ecosystem of R packages are based on C++. 
-- NumPy and SciPy are a mix of FORTRAN and C. 
-- Scikit-Learn is written in C.
-- Most deep learning frameworks are largely written in C/C++
-![Examples of multiple languages in deep learning libraries](https://storopoli.github.io/Bayesian-Julia/pages/images/ML_code_breakdown.svg)
-"""
-
-# ╔═╡ 91619628-e7c1-450f-9679-2ec4b3da8de1
-md"""
-## When is rewriting code in another language necessary?
-- When you start with an intepretted, high-level language (e.g., R, Python, IDL), instead of Julia, **and**
-- When improved performance would be worth your time (e.g., enable more accurate model, more resolution, larger dataset, need to rerun many times to quantify uncertainties, etc.)
-"""
-
-# ╔═╡ 3099a52d-07de-4ebc-8d15-12de111395d8
-md"""
-#### → Coding in Julia saves human & computer time!
-"""
-
-# ╔═╡ ec8faefa-8e21-4874-bc98-6487b22e4529
-md"""
-## [Why we created Julia](https://julialang.org/blog/2012/02/why-we-created-julia/)
-> "...
-> We want a language that's **open source**, with a liberal license. We want the **speed** of C with the **dynamism** [e.g., variable types need not be specified] of Ruby. We want a language that's homoiconic [i.e., code can be manipulated as data], with true macros like Lisp, but with **obvious, familiar mathematical notation** like Matlab. We  want something as **usable for general programming** as Python, as **easy for statistics** as R, as **natural for string processing** as Perl, as **powerful for linear algebra** as Matlab, as **good at gluing programs together** as the shell. Something that is dirt **simple to learn**, yet keeps the most serious hackers happy. We want it **interactive and** we want it **compiled**. 
-> ..." 
-> — by Jeff Bezanson, Stefan Karpinski, Viral B. Shah and Alan Edelman
-"""
-
-
-# ╔═╡ f06832f2-c950-4993-a9ec-e9865bceea7b
-md"""
-## What are different languages (not) good for?
-| Language   | Designed for           | Drawbacks                              |
-|:-----------|:----------------------:|:---------------------------------------|
-|Julia       | Numerical Computing    | Package ecosystem still growing rapidly|
-|Fortran     | Numerical Computing    | Composing projects                     |
-|            |                        | Development time                       |
-|C           | Operating Systems      | Development time                       |
-|            |                        |                                        |
-|C++         | Object Oriented        | Larger projects, complexity            |
-|            |                        | Composing projects                     |
-|Java        | Object Oriented        | Forces OO design, memory efficiency    |
-|            |                        | Composing projects                     |
-|            | Portability            | Numerical computing                    |
-|Matlab      | Numerical computing    | Performance, esp. for custom algorithms|
-|            | Developer efficiency   | Requires licenses                      |
-|IDL         | Plotting               | Performance, esp. for custom algorithms|
-|            |                        | Requires licenses                      |
-|Perl        | Processing text reports| Numerical computing                    |
-|            |                        | Performance                            |
-|Python      | Processing system logs | Numerical computing                    |
-|            |                        | Performance                            |
-|S/S+/R      | Statistical computing  | Performance, esp. for custom algorithms|
-|Mathematica | Smbolic computing      | Performance, esp. for custom algorithms|
-|            | Developer efficiency   | Requires licenses                      |
+  - Stack vs Heap allocations
+  - Pre-allocating storage
+- Garbage Collectors
+- Expert/Non-expert Interfaces
 """
 
 # ╔═╡ abee77fd-e2a2-403b-ab43-b4ea6741ba4c
@@ -364,16 +86,21 @@ md"
 # ╔═╡ f0111b2d-7a7c-4029-8fd0-7c0785b5b038
 md"""
 ### Where do your variables get stored?
-Your program will use two distinct virtual address spaces:
+Your program will use two distinct **virtual address spaces**:
 - **Stack**
   + Scalars
   + Small structures or collections with known size
   + Function parameters and memory addresses for their outputs
   + Values cleared from stack on a Last-in, First-out (LIFO) basis
+  + *Push*ing values onto top of stack is fast
+  + *Pop*ing values off the top of the stack is fast
 - **Heap**
   + Large arrays/collections
   + Structures/collections if size is not known at compile time
   + Stored until deallocated (by programmer or garbage collector)
+  + Allocating memory from heap incurs latency
+  + Deallocating can be fast, but is error prone
+  + Deallocations typically defered until a *garbage collector* frees up memory that is no longer in use.
 """
 
 # ╔═╡ fc9ae0ec-298b-4542-9c71-dbbe535b4bd9
@@ -395,13 +122,13 @@ let
 	@time c .= a.+b   # Writes results into existing storage for c, avoids creating temporary array
 end;
 
-# ╔═╡ 34840126-4365-418d-bc55-4ac3bd85f43f
-"""`multiply_matrix_vector_allocates(A::Matrix, b::Vector)`
+# ╔═╡ bf07ac72-3fd3-4062-beb6-8bbcd2a95771
+"""`multiply_matrix_vector_preallocated!(out::Vector, A::Matrix, b::Vector)`
 
-Multiply matrix A and vector b by hand, allocating space for output"""
-function multiply_matrix_vector_allocates(A::Matrix, b::Vector) 
+Multiply matrix A and vector b by hand using rows for inner loop, using preallocated space for output"""
+function multiply_matrix_vector_preallocated!(out::AbstractVector, A::AbstractMatrix, b::AbstractVector)
+	@assert size(A,1) == length(out)
 	@assert size(A,2) == length(b)
-	out = zeros(promote_type(eltype(A),eltype(b)), size(A,1))
 	@simd for j in 1:size(A,2)
 		for i in 1:size(A,1)
 			@inbounds out[i] += A[i,j]*b[j]
@@ -410,18 +137,14 @@ function multiply_matrix_vector_allocates(A::Matrix, b::Vector)
 	return out
 end
 
-# ╔═╡ bf07ac72-3fd3-4062-beb6-8bbcd2a95771
-"""`multiply_matrix_vector_preallocated!(out::Vector, A::Matrix, b::Vector)`
+# ╔═╡ 34840126-4365-418d-bc55-4ac3bd85f43f
+"""`multiply_matrix_vector_allocates(A::Matrix, b::Vector)`
 
-Multiply matrix A and vector b by hand using rows for inner loop, using preallocated space for output"""
-function multiply_matrix_vector_preallocated!(out::Vector, A::Matrix, b::Vector)
-	@assert size(A,1) == length(out)
+Multiply matrix A and vector b by hand, allocating space for output"""
+function multiply_matrix_vector_allocates(A::AbstractMatrix, b::AbstractVector) 
 	@assert size(A,2) == length(b)
-	@simd for j in 1:size(A,2)
-		for i in 1:size(A,1)
-			@inbounds out[i] += A[i,j]*b[j]
-		end
-	end
+	out = zeros(promote_type(eltype(A),eltype(b)), size(A,1))
+	multiply_matrix_vector_preallocated!(out,A,b)
 	return out
 end
 
@@ -446,93 +169,14 @@ let
 	@benchmark multiply_matrix_vector_preallocated!($y,$A,$b)
 end
 
-# ╔═╡ 715b83bf-4eb4-442f-8be0-b1deb7904953
+# ╔═╡ 46d06e5b-5968-4cdb-97f3-f774f633cce0
 md"""
-## Garbage collection
+## Garbage Collection
+- When try to allocate from heap, language may decide to run **garbage collector**.
+- Checks whether it's possible for code to reach memory that has been allocated.
+- If not, marks it for deallocation.
+- This can cause an unexpected delay.
 """
-
-# ╔═╡ 8114f59e-1a8e-49c6-baaa-20ed19747d2b
-md"""
-## How to generate less garbage?
-### For small allocations,  use data types that stay on the stack
-- Custom `struct` (with fixed size elements)
-- [Tuple](https://docs.julialang.org/en/v1/manual/types/#Tuple-Types) 
-- [NamedTuple](https://docs.julialang.org/en/v1/manual/types/#Named-Tuple-Types)
-- [StaticArrays.jl](https://github.com/JuliaArrays/StaticArrays.jl)
-"""
-
-# ╔═╡ 5287e3b8-2309-4c78-91f0-f80e7ae7f209
-struct MySmallStruct
-	result::Float64
-	message::String
-end
-
-# ╔═╡ d7fe5753-f02d-4a04-8967-32441149dfe4
-mss = MySmallStruct(1.0, "Success")
-
-# ╔═╡ b718654a-2490-4bac-a1af-54f959eed0fb
-mss.message
-
-# ╔═╡ fd53c52d-8acd-4ca5-bcf0-8375d64179cc
-t = (1.0, "Success")
-
-# ╔═╡ 6d982d26-1917-4f46-babf-e0ea19886976
-t[2]
-
-# ╔═╡ 75661d12-7709-44d0-a5f3-d6c9a5eff952
-typeof(t), sizeof(t)
-
-# ╔═╡ f632c0ab-ea32-4973-8ec9-79a7f4f4c4ad
-nt = (;result = 1.0, message="Success")
-
-# ╔═╡ 15f1d255-0aa9-4837-b76e-1f7b401c93ca
-typeof(nt)
-
-# ╔═╡ 4c724a18-e3dc-4cdb-997c-b3687b0d51c5
-nt[2]
-
-# ╔═╡ 138806a6-08f9-4b82-9e8c-128baab3da31
-nt.message
-
-# ╔═╡ 2ad27ea5-77f7-4532-9005-7a63160e2503
-md"""
-### Keeping arrays in the stack/out of the heap
-"""
-
-# ╔═╡ 541bbf9f-afa5-4837-83b1-84017bccc25c
-@time v0 = [1,2,3]    # Vector whose length can change
-
-# ╔═╡ 318991c3-f693-4364-8e99-623883739a86
-begin
-	@time v2 = FixedSizeVector{Float64}(undef, 3)  # Vector with fixed size, but may still go to heap
-	v2 .= (1,2,0)
-	v2[3] = 3
-end
-
-# ╔═╡ 12e4d1e4-d284-4180-8342-d58dda578272
-begin
-	@time v3 = MVector(1, 2, 3)     # Mutable vector of fixed size and type, goes to stack
-	@time v4 = @MVector [1, 2, 3]   # macro to ease constructing
-end
-
-# ╔═╡ abf6e65a-292a-4f4a-8eee-ea90cd22e376
-v2[2] = 0;
-
-# ╔═╡ 4772a931-14a6-46c9-8b8c-44b39d213216
-begin
-	@time v5 = SVector(1, 2, 3)        # Static vector of fixed size and type, goes to stack
-	v6 = @time @SVector [1, 2, 3]      # macro for converting
-	v6.data === (1, 2, 3)              # SVector uses a tuple for internal storage
-end;
-
-# ╔═╡ 1aab953a-f524-4d93-95bf-ea5524c47b8b
-@test_broken v5[2] = 0
-
-# ╔═╡ 3f4cac5b-9b2a-4261-a01e-e2d4f692fb90
-begin
-	m1 = @time @SMatrix [ 1  3 ; 2  4 ]
-	m2 = @SMatrix randn(4,4)
-end
 
 # ╔═╡ 3b3d6fdb-5066-48f1-aa64-e28f5ad3c1f1
 protip(md"""
@@ -563,6 +207,206 @@ If you’re having issues with garbage collection, your primary recourse is to g
 
 (nearly quote from [Julia Discourse post by Stefan Karpinski](https://discourse.julialang.org/t/details-about-julias-garbage-collector-reference-counting/18021))
 """)
+
+# ╔═╡ 8114f59e-1a8e-49c6-baaa-20ed19747d2b
+md"""
+## How to generate less garbage?
+### For small allocations,  use data types that stay on the stack
+- [Tuple](https://docs.julialang.org/en/v1/manual/types/#Tuple-Types) 
+- [NamedTuple](https://docs.julialang.org/en/v1/manual/types/#Named-Tuple-Types)
+- Custom `struct` (with fields that go to the stack)
+- [StaticArrays.jl](https://github.com/JuliaArrays/StaticArrays.jl)
+"""
+
+# ╔═╡ fd53c52d-8acd-4ca5-bcf0-8375d64179cc
+t = (1.0, "Success")
+
+# ╔═╡ 6d982d26-1917-4f46-babf-e0ea19886976
+t[2]
+
+# ╔═╡ 75661d12-7709-44d0-a5f3-d6c9a5eff952
+typeof(t), sizeof(t)
+
+# ╔═╡ f632c0ab-ea32-4973-8ec9-79a7f4f4c4ad
+nt = (;result = 1.0, message="Success")
+
+# ╔═╡ 15f1d255-0aa9-4837-b76e-1f7b401c93ca
+typeof(nt)
+
+# ╔═╡ 4c724a18-e3dc-4cdb-997c-b3687b0d51c5
+nt[2]
+
+# ╔═╡ 138806a6-08f9-4b82-9e8c-128baab3da31
+nt.message
+
+# ╔═╡ 0dd9307f-1390-412b-8cf6-77deb33091a0
+md"""
+#### Examples of simple `struct`'s
+"""
+
+# ╔═╡ 5287e3b8-2309-4c78-91f0-f80e7ae7f209
+struct MyImmutableStruct
+	result::Float64
+	message::String
+end
+
+# ╔═╡ d7fe5753-f02d-4a04-8967-32441149dfe4
+mis = MyImmutableStruct(2.0, "Lorem ipsum dolor sit amet")
+
+# ╔═╡ b718654a-2490-4bac-a1af-54f959eed0fb
+mis.message
+
+# ╔═╡ 1fa422e7-329d-4072-a786-fb73c718e49e
+sizeof(mis)
+
+# ╔═╡ 76187747-1b2f-42e1-b0e7-509b0ed42b6a
+sizeof(mis.result), sizeof(mis.message)
+
+# ╔═╡ b7bdbd76-4bb1-473d-b3a7-f5757a42d6ca
+@allocated  mis2 = MyImmutableStruct(2.0, "Lorem ipsum dolor sit amet")
+
+# ╔═╡ cf7990f7-40ec-4a99-be58-e5342061baed
+md"""
+#### Limitations of immutable structs
+"""
+
+# ╔═╡ aac0c3f8-ece3-431e-859d-790b8f3b995a
+begin 
+	mis_will_break = MyImmutableStruct(3.0, "Lorem ipsum dolor sit amet")
+	try
+		mis_will_break.result = 4.0
+	catch
+		@warn "You can't do that!"
+	end
+end
+
+# ╔═╡ 6371bcc6-3253-4dc4-82f8-647aedf4014e
+md"""
+#### Why default to immutable?
+- Often is more efficient. 
+- Some structs can be packed efficiently into arrays
+- Compiler is often able to avoid allocating immutable objects.
+- Code using immutable objects can be easier to reason about.
+"""
+
+# ╔═╡ a1f3a295-7f63-46e1-a493-5082a86dc1ab
+md"""
+#### What if I want to mutate my `struct`'s?
+"""
+
+# ╔═╡ f9714ea5-5d0e-4006-92c4-71b3e574d26c
+mutable struct MyMutableStruct
+	result::Float64
+	message::String
+end
+
+# ╔═╡ 2e8da77c-004b-4d59-83f4-9fb981ea5658
+begin
+	mms = MyMutableStruct(5.0, "Lorem ipsum dolor sit amet")
+	mms.result = 0
+	mms
+end
+
+# ╔═╡ 63ec6f40-1f29-4bf5-b48a-124f1e8d783b
+question_box(md"Will this be stored on the stack or heap?")
+
+# ╔═╡ c4da391c-e7dc-4ce1-9ccb-04aa2ca79e26
+hint(md"""
+- `sizeof(mms) = ` $(sizeof(mms)) 
+- `sizeof(mms.result) =` $(sizeof(mms.result))
+- `sizeof(mms.message) =` $(sizeof(mms.message))
+- `Base.summarysize(mms.message) =`$(Base.summarysize(mms.message))
+- `Base.summarysize(mms) =`$(Base.summarysize(mms))
+""")
+
+# ╔═╡ 41c6bcb6-c5c5-4a52-a678-31ffa22641e1
+@allocated mms2 = MyMutableStruct(5.0, "Lorem ipsum dolor sit amet")
+
+# ╔═╡ 9cc467f9-cc48-4026-87c5-dadfe239c5db
+md"""
+### Implications
+- Mutable objects typically go onto heap 
+- → Only make structs mutable if a reason.
+- An immutable object can contain mutable objects (e.g., arrays).
+"""
+
+# ╔═╡ 2ad27ea5-77f7-4532-9005-7a63160e2503
+md"""
+## Keeping small arrays in the stack and out of the heap
+"""
+
+# ╔═╡ 541bbf9f-afa5-4837-83b1-84017bccc25c
+@time v0 = [1,2]      # Vector whose length can change, goes to heap
+
+# ╔═╡ ff336de5-cf53-41ca-9cc9-1ab37b851be3
+@time v1 = [1,2,3]    # Vector whose length can change, goes to heap
+
+# ╔═╡ 4772a931-14a6-46c9-8b8c-44b39d213216
+begin
+	@time v5 = SVector(1, 2, 3)        # Static vector of fixed size and type, goes to stack
+	@time v6 = @SVector [1, 2, 3]      # macro for creating SVector without allocating on heap
+end;
+
+# ╔═╡ 1aab953a-f524-4d93-95bf-ea5524c47b8b
+try
+	v6[2] = 0
+catch
+	@warn "You can't do modify a static vector."
+end
+
+# ╔═╡ 3f4cac5b-9b2a-4261-a01e-e2d4f692fb90
+begin
+	m1 = @time @SMatrix [ 1  3 ; 2  4 ]
+	m2 = @SMatrix randn(4,4)
+end
+
+# ╔═╡ c7e5ad3c-a3ce-47a4-9154-ca33edc2811b
+md"""
+#### Meaning of equality can be confusing
+"""
+
+# ╔═╡ 8fe1804c-4fce-4980-bb54-dad89c3062d1
+v1
+
+# ╔═╡ 35332b4e-4caa-4448-a345-d272a6362647
+v5
+
+# ╔═╡ b55fc829-c857-44bb-af5b-cbbf8dcab5e7
+v1 == v5
+
+# ╔═╡ aa3233da-122d-40a3-80bb-9b6472906ec0
+v1 === v5
+
+# ╔═╡ 31a1f316-8098-4496-9d20-b0782358bd4f
+md"""
+#### Mutable fixed-size vectors/arrays
+"""
+
+# ╔═╡ 12e4d1e4-d284-4180-8342-d58dda578272
+begin
+	@time v3 = MVector(1, 2, 3)     # Mutable vector of fixed size and type, goes to heap, but will try to waste less memory compared to a normal vector
+	@time v4 = @MVector [1, 2, 3, 4, ]   # macro to ease constructing
+end
+
+# ╔═╡ 318991c3-f693-4364-8e99-623883739a86
+begin
+	@time v2 = FixedSizeArray(v3)  # Vector with fixed size, but still likely to go to heap, since intended for larger arrays
+	v2[1] = 1.0
+	v2[2] = 2.0
+	v2[3] = 3.0
+end
+
+# ╔═╡ 397e78ca-8b07-4593-8c92-9b69cbc9d2a3
+md"""
+#### Warning about mutating collections in Pluto
+"""
+
+# ╔═╡ abf6e65a-292a-4f4a-8eee-ea90cd22e376
+v2[2] = 0;  # Valid Julia code, but...
+# Leads to ambiguous order of execution in Pluto
+
+# ╔═╡ 66968290-4f45-49e9-a377-7d2b101a822f
+v2
 
 # ╔═╡ cf913e43-4499-4efc-87cb-2474222b8865
 md"""
@@ -644,91 +488,6 @@ let
 	DiffResults.value(result), DiffResults.gradient(result)
 end
 
-# ╔═╡ 674067d7-d4f3-4423-82cf-96e23d84f0f1
-md"""
-# Old Reading Questions
-"""
-
-# ╔═╡ 9792781c-272c-4ae2-881b-567d9c8e53e1
-question_box(md"""What do you do if the algorithm you plan to implement scales poorly (e.g., $O(n!)$, $O(n^2)$, etc.)?  Aare there any ways to get around this roadblock in computation time and/or memory usage?
-""")
-
-# ╔═╡ 28decc84-d3ba-4900-bbb3-3916f5aa18b8
-md"""
-- Pause and think if that's really the best algorithm for your problem.
-- Are there any constraints/assumptions that could be used to make your problem simpler than the general problem?
-- Might an approximate algorithm be acceptable?
-- Ask an advisor/colleague if they have alternative suggestions?
-"""
-
-# ╔═╡ 1f43b79a-c7d7-4b17-8b82-7b666211b936
-md"""
-## Julia Questions
-"""
-
-# ╔═╡ ba7ad663-e123-42c9-9a06-48fc6924752e
-question_box(md"""
-Does Julia follow row-major order or column-major order?
-""")
-
-# ╔═╡ ab20ad52-16df-4543-8acb-ea2fc0b389ad
-md"""
-**Column-major**
-"""
-
-# ╔═╡ bfe377e1-e872-4218-abc2-a1f945784d8d
-question_box(md"""What is the difference between a missing value and a nothing value in Julia?""")
-
-# ╔═╡ 7602430d-205f-40f0-9ffc-39a8167d26a8
-2*missing
-
-# ╔═╡ 273bd6a5-5932-44b9-a20c-e9e66359d110
-@test_broken 3*nothing
-
-# ╔═╡ 2a72a666-eac1-440c-9a14-550c07f1e6fa
-question_box(md"""When would one of them be useful over the other?""")
-
-# ╔═╡ e3a29707-145c-419e-a81f-bee3e151a992
-md"""
-- `missing`:  You were expecting an output but don't have one (e.g., an array of values, missing data for statistical analysis)
-- `nothing`:  A function wasn't able to do what is intended for your inputs (e.g., you search for a substring, but don't find any)
-"""
-
-# ╔═╡ 79f303de-9e8e-4125-8c69-5f3a1a45ff2d
-match(r"_(\d{8})\.fits","data_20230606.fits")
-
-# ╔═╡ 466aaaf9-3e94-488d-9594-17c4761ecb5f
-typeof(match(r"_(\d{4})\.fits","data_20230606.fits"))
-
-# ╔═╡ 6f35d08f-46a9-4518-be97-48c82e3469fd
-question_box(md"""
-The chapter tells us that at the low level, we should optimize temporal locality and memory usage. What is an example of that being done?
-""")
-
-# ╔═╡ 266998ac-0f48-4881-bc14-1989da09079f
-md"""
-See matrix multiply example above and in Lab 3, Ex 1.
-"""
-
-# ╔═╡ e7a5a559-6051-439a-980c-90bed8503eb8
-md"""
-# Random Questions
-"""
-
-# ╔═╡ 8016a7ef-ced4-4c44-8d36-400f8bc0b7fa
-question_box(md"""
-Splines (and interpolation in general) obviously can be very useful, are there any significant downsides to using splines in situations where you can rely heavily on interpolation being accurate (e.g., its fitting a smooth curve or you have a lot of points to interpolate over)?
-""")
-
-# ╔═╡ c65f334d-9269-4d33-a0e8-9781dbf914b7
-md"""
-- Does your interpolation routine provide sufficient accuracey?
-- How much effort would be required to be confident in using them?
-- Choose interpolation algorithms based on desired properties of interpolant (e.g., continuity, continuous 1st derivative, respect conservation laws, etc.)
-- Think about how computational cost scales as the size of dataset grows.
-- Interpolation algorithms that perform well in 1-D often perform poorly in higher dimensions.
-"""
-
 # ╔═╡ d35aa76c-b4e6-45f8-a4e3-ba37d674db82
 md"# Helper Code"
 
@@ -738,7 +497,6 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 FixedSizeArrays = "3821ddf9-e5b5-40d5-8e25-6813ab96b5e2"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-InlineStrings = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoTest = "cb4044da-4d16-4ffa-a6a3-8cad7f73ebdc"
@@ -749,7 +507,6 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 BenchmarkTools = "~1.6.0"
 FixedSizeArrays = "~1.2.0"
 ForwardDiff = "~1.1.0"
-InlineStrings = "~1.4.5"
 Plots = "~1.40.19"
 PlutoTeachingTools = "~0.4.5"
 PlutoTest = "~0.2.2"
@@ -763,7 +520,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "8af01facd9d1d8dabd5510a63268641c34d6786c"
+project_hash = "17d824646e43f74a2eaad4eff9bd799c1c31b655"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -1100,19 +857,6 @@ deps = ["Logging", "Random"]
 git-tree-sha1 = "b6d6bfdd7ce25b0f9b2f6b3dd56b2673a66c8770"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 version = "0.2.5"
-
-[[deps.InlineStrings]]
-git-tree-sha1 = "8f3d257792a522b4601c24a577954b0a8cd7334d"
-uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
-version = "1.4.5"
-
-    [deps.InlineStrings.extensions]
-    ArrowTypesExt = "ArrowTypes"
-    ParsersExt = "Parsers"
-
-    [deps.InlineStrings.weakdeps]
-    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
-    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
@@ -2023,29 +1767,7 @@ version = "1.9.2+0"
 # ╟─9ec9429d-c1f1-4845-a514-9c88b452071f
 # ╟─ae709a34-9244-44ee-a004-381fc9b6cd0c
 # ╟─9007f240-c88e-46c4-993d-fd6b93d8b18d
-# ╟─a1974ea8-5975-4312-9553-2972d9aef836
-# ╟─d15a7131-96f3-4cd3-ac13-1c038c74759a
 # ╟─348ee204-546f-46c5-bf5d-7d4a761002ec
-# ╟─3595815b-e42a-46cc-b28d-5972660ccbdf
-# ╟─70d864bc-e6ee-4a7c-aaf0-a4246b88a8c1
-# ╟─5e559757-07b4-490e-8908-69d1f3f06c00
-# ╟─7d5369ed-fb7e-48f8-a56b-ceb50f9ba110
-# ╟─1fa80b33-acc5-453b-a085-6dc619afe4a9
-# ╟─344a6230-1958-4e74-b739-396fa1171886
-# ╟─03f85285-fa9d-4583-88fe-c8bd28f00138
-# ╟─5d5a6ca4-9e89-448d-b41f-1f52b9298021
-# ╟─5ccb3be3-55ee-4479-97bc-fa9e51d5d648
-# ╟─babb5c0b-4dbe-4d4b-b9d4-52bdeb1a5802
-# ╟─f86ae2fd-c286-4cae-979f-d1129fc4b131
-# ╟─75a4b3a1-d6c3-4d48-8f0f-87a92c46a499
-# ╟─99e20a91-cfd5-4d03-8186-26b76868d412
-# ╟─22be7ad6-32d0-41e9-9a46-c9f530003623
-# ╟─34f5a2a9-4609-47b8-a846-e4152cc642f0
-# ╟─39e70a34-1196-44fc-a009-1c1a4e858a24
-# ╟─91619628-e7c1-450f-9679-2ec4b3da8de1
-# ╟─3099a52d-07de-4ebc-8d15-12de111395d8
-# ╟─ec8faefa-8e21-4874-bc98-6487b22e4529
-# ╟─f06832f2-c950-4993-a9ec-e9865bceea7b
 # ╟─abee77fd-e2a2-403b-ab43-b4ea6741ba4c
 # ╟─e46c0510-f604-4025-bef5-9029e3747447
 # ╟─ed0bc201-03c0-448b-bfeb-9f43d7e9ad7a
@@ -2058,11 +1780,9 @@ version = "1.9.2+0"
 # ╟─bf07ac72-3fd3-4062-beb6-8bbcd2a95771
 # ╟─1b42bd08-9611-4d96-9d91-fdce9d24982f
 # ╠═060bc23d-52fa-4536-aa50-26390552997f
-# ╟─715b83bf-4eb4-442f-8be0-b1deb7904953
+# ╟─46d06e5b-5968-4cdb-97f3-f774f633cce0
+# ╟─3b3d6fdb-5066-48f1-aa64-e28f5ad3c1f1
 # ╟─8114f59e-1a8e-49c6-baaa-20ed19747d2b
-# ╠═5287e3b8-2309-4c78-91f0-f80e7ae7f209
-# ╠═d7fe5753-f02d-4a04-8967-32441149dfe4
-# ╠═b718654a-2490-4bac-a1af-54f959eed0fb
 # ╠═fd53c52d-8acd-4ca5-bcf0-8375d64179cc
 # ╠═6d982d26-1917-4f46-babf-e0ea19886976
 # ╠═75661d12-7709-44d0-a5f3-d6c9a5eff952
@@ -2070,15 +1790,40 @@ version = "1.9.2+0"
 # ╠═15f1d255-0aa9-4837-b76e-1f7b401c93ca
 # ╠═4c724a18-e3dc-4cdb-997c-b3687b0d51c5
 # ╠═138806a6-08f9-4b82-9e8c-128baab3da31
+# ╟─0dd9307f-1390-412b-8cf6-77deb33091a0
+# ╠═5287e3b8-2309-4c78-91f0-f80e7ae7f209
+# ╠═d7fe5753-f02d-4a04-8967-32441149dfe4
+# ╠═b718654a-2490-4bac-a1af-54f959eed0fb
+# ╠═1fa422e7-329d-4072-a786-fb73c718e49e
+# ╠═76187747-1b2f-42e1-b0e7-509b0ed42b6a
+# ╠═b7bdbd76-4bb1-473d-b3a7-f5757a42d6ca
+# ╟─cf7990f7-40ec-4a99-be58-e5342061baed
+# ╠═aac0c3f8-ece3-431e-859d-790b8f3b995a
+# ╟─6371bcc6-3253-4dc4-82f8-647aedf4014e
+# ╟─a1f3a295-7f63-46e1-a493-5082a86dc1ab
+# ╠═f9714ea5-5d0e-4006-92c4-71b3e574d26c
+# ╠═2e8da77c-004b-4d59-83f4-9fb981ea5658
+# ╟─63ec6f40-1f29-4bf5-b48a-124f1e8d783b
+# ╟─c4da391c-e7dc-4ce1-9ccb-04aa2ca79e26
+# ╠═41c6bcb6-c5c5-4a52-a678-31ffa22641e1
+# ╟─9cc467f9-cc48-4026-87c5-dadfe239c5db
 # ╟─2ad27ea5-77f7-4532-9005-7a63160e2503
 # ╠═541bbf9f-afa5-4837-83b1-84017bccc25c
-# ╠═318991c3-f693-4364-8e99-623883739a86
-# ╠═12e4d1e4-d284-4180-8342-d58dda578272
-# ╠═abf6e65a-292a-4f4a-8eee-ea90cd22e376
+# ╠═ff336de5-cf53-41ca-9cc9-1ab37b851be3
 # ╠═4772a931-14a6-46c9-8b8c-44b39d213216
 # ╠═1aab953a-f524-4d93-95bf-ea5524c47b8b
 # ╠═3f4cac5b-9b2a-4261-a01e-e2d4f692fb90
-# ╟─3b3d6fdb-5066-48f1-aa64-e28f5ad3c1f1
+# ╟─c7e5ad3c-a3ce-47a4-9154-ca33edc2811b
+# ╠═8fe1804c-4fce-4980-bb54-dad89c3062d1
+# ╠═35332b4e-4caa-4448-a345-d272a6362647
+# ╠═b55fc829-c857-44bb-af5b-cbbf8dcab5e7
+# ╠═aa3233da-122d-40a3-80bb-9b6472906ec0
+# ╟─31a1f316-8098-4496-9d20-b0782358bd4f
+# ╠═12e4d1e4-d284-4180-8342-d58dda578272
+# ╠═318991c3-f693-4364-8e99-623883739a86
+# ╟─397e78ca-8b07-4593-8c92-9b69cbc9d2a3
+# ╠═abf6e65a-292a-4f4a-8eee-ea90cd22e376
+# ╠═66968290-4f45-49e9-a377-7d2b101a822f
 # ╟─cf913e43-4499-4efc-87cb-2474222b8865
 # ╠═cb988242-8aa6-4f31-955e-021024e0c921
 # ╟─22c6cf9f-2266-4908-8bb5-ad30d7388c06
@@ -2095,24 +1840,6 @@ version = "1.9.2+0"
 # ╟─f68fb195-1fa6-4364-8d8f-427a6ea9a4b6
 # ╟─5f45fe0e-81df-4dd5-b827-628e0831755e
 # ╠═cbea527b-9a62-40d4-b922-47f4428a8b33
-# ╟─674067d7-d4f3-4423-82cf-96e23d84f0f1
-# ╟─9792781c-272c-4ae2-881b-567d9c8e53e1
-# ╟─28decc84-d3ba-4900-bbb3-3916f5aa18b8
-# ╟─1f43b79a-c7d7-4b17-8b82-7b666211b936
-# ╟─ba7ad663-e123-42c9-9a06-48fc6924752e
-# ╟─ab20ad52-16df-4543-8acb-ea2fc0b389ad
-# ╟─bfe377e1-e872-4218-abc2-a1f945784d8d
-# ╠═7602430d-205f-40f0-9ffc-39a8167d26a8
-# ╠═273bd6a5-5932-44b9-a20c-e9e66359d110
-# ╟─2a72a666-eac1-440c-9a14-550c07f1e6fa
-# ╟─e3a29707-145c-419e-a81f-bee3e151a992
-# ╠═79f303de-9e8e-4125-8c69-5f3a1a45ff2d
-# ╠═466aaaf9-3e94-488d-9594-17c4761ecb5f
-# ╟─6f35d08f-46a9-4518-be97-48c82e3469fd
-# ╟─266998ac-0f48-4881-bc14-1989da09079f
-# ╟─e7a5a559-6051-439a-980c-90bed8503eb8
-# ╟─8016a7ef-ced4-4c44-8d36-400f8bc0b7fa
-# ╟─c65f334d-9269-4d33-a0e8-9781dbf914b7
 # ╟─d35aa76c-b4e6-45f8-a4e3-ba37d674db82
 # ╠═624e8936-de28-4e09-9a4e-3ef2f6c7d9b0
 # ╟─00000000-0000-0000-0000-000000000001

@@ -39,43 +39,16 @@ TableOfContents(aside=toc_aside)
 
 # ╔═╡ 9007f240-c88e-46c4-993d-fd6b93d8b18d
 md"""
-# Week 3 Admin Announcements
-## Lab exercises
-- Good work!
-- Review feedback on Lab 1 via GitHub
-"""
-
-# ╔═╡ a1974ea8-5975-4312-9553-2972d9aef836
-md"""
+# Week 4 Admin Announcements
 ## Project proposals
-### Mechanics
-- Link in Canvas to create starter repository.
-- Edit `proposal.md`.
-
-### Projects
-- Great if it's relevant to your research
-- Don't try to do an entire research project
-- Pick one (or a few) functions to focus on
-- Needs to have some problem size parameter that can be varried over a wide range:
-  + Number of objects
-  + Number of epochs
-  + Size of simulation
-  + Spatial resolution
-  + Temporal resolution
-- Ideally there's a meaningful way to scale to `N` ≳ 10³
-"""
-
-# ╔═╡ d15a7131-96f3-4cd3-ac13-1c038c74759a
-md"""
-## GitHub Classroom issue
-- Please try to follow link to create starter repositories by 9am Friday morning of lab.
-- If you get an error about permissions to access your own lab, send Kyle & I email with your github userid in the morning.
-- Then we can delete and remove you before class starts.
+### Feedback
+- Project repo, Pull requests, Feedback (either Conversation or Files view) 
+- I'll look for any replies once I've finished providing feedback to everyone.
 """
 
 # ╔═╡ 348ee204-546f-46c5-bf5d-7d4a761002ec
 md"""
-# Week 3 Discussion Topics
+# Week 4 Discussion Topics
 - Priorities for Scientific Computing
    + Increasing chances of correctness
    + Documentation

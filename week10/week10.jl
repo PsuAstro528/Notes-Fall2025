@@ -1,33 +1,36 @@
 ### A Pluto.jl notebook ###
-# v0.19.27
+# v0.20.18
 
 using Markdown
 using InteractiveUtils
 
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
-    quote
+    #! format: off
+    return quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
+    #! format: on
 end
 
-# ╔═╡ 0775d839-6823-4a81-8f73-7eaefd59f913
-using CUDA
-
 # ╔═╡ c76b6672-53df-4fd1-a39a-609248914446
-using PlutoUI, PlutoTeachingTools, PlutoTest
-
-# ╔═╡ 2aa60451-2e25-4b9d-ba0c-13b416f0d7af
-using BenchmarkTools
+begin
+	# Note this overrides Pluto's default package manager, so that we can provide a LocalPreferences.toml that specifies which version of the CUDA runtime libraries to use.  
+	import Pkg
+	Pkg.activate(@__DIR__)
+	using CUDA
+	using PlutoUI, PlutoTeachingTools, PlutoTest
+	using BenchmarkTools
+end
 
 # ╔═╡ 4e6cb703-b011-4f8a-8c9a-4863459ee7a2
-md"> Astro 528: High-Performance Scientific Computing for Astrophysics (Fall 2023)"
+md"> Astro 528: High-Performance Scientific Computing for Astrophysics (Fall 2025)"
 
 # ╔═╡ aecdcdbc-5ef6-4a7b-bd65-d01ed1cfe497
-ChooseDisplayMode()
+WidthOverDocs()
 
 # ╔═╡ f7fdc34c-2c99-493d-9977-f206bb7a2810
 md"ToC on side $(@bind toc_aside CheckBox(;default=true))"
@@ -39,14 +42,6 @@ TableOfContents(aside=toc_aside)
 md"""
 # Week 10 Discussion & Q&A:
 ### Parallelization for Hardware Accelerators (e.g., GPUs) 
-"""
-
-# ╔═╡ f3165718-746e-431d-9e2d-e1ce39722d4d
-md"""
-## Parallel Architectures
-- Shared Memory (Lab 6)
-- Distributed Memory (Lab 7)
-- Hardware Accelerator/GPU (Lab 8)
 """
 
 # ╔═╡ 966b8013-e804-4fe3-89ea-90d07df41d16
@@ -64,11 +59,21 @@ md"### CPU chip layout
 
 ![Intel CPU die shot](https://cdn.arstechnica.net/wp-content/uploads/2011/11/core_i7_lga_2011_die-4ec188e-intro.jpg)"
 
-# ╔═╡ 91b9986d-049d-495e-be57-f288c051ec2a
+# ╔═╡ e7fc1c20-6404-45e8-8b10-80f0fc7cee09
+md"""
+## Lab 8: GPU Programming
+- We have access to 21 NVIDIA P100 GPUs
+- [GPU Comparison](https://en.wikipedia.org/wiki/List_of_Nvidia_graphics_processing_units)
+"""
 
-
-# ╔═╡ 8329f763-d540-4068-bc29-91e88803f4fc
-
+# ╔═╡ 5d30ac34-b58c-4360-88e4-ec3869210f26
+md"""
+## Accessing GPUs on Roar Collab or Lynx
+- Add "--gres=gpu:1" to slurm script.
+- In portal, before starting JupyterLab session:
+  - Click "Enable advanced Slurm options" 
+  - Include `--gres=gpu:1` 
+"""
 
 # ╔═╡ 7cd03755-04c5-4bd7-8d10-2c563dc377a5
 md"## CUDA & OpenCL"
@@ -80,7 +85,7 @@ md"## CUDA & OpenCL"
 md"## Calling GPU on arrays"
 
 # ╔═╡ 91c94540-1257-47fa-bafb-2ea66830b726
-N = 10^6
+N = 10^7
 
 # ╔═╡ 7b531669-d86b-4038-8052-b44015057eb3
 begin
@@ -121,7 +126,10 @@ with_terminal() do
 end
 
 # ╔═╡ 1adbafdb-6a5f-4390-9b78-f9c41d3e08dd
-md"## How to use GPUs very ineefficiently"
+md"""
+## Use GPUs extermely ineefficiently
+#### (not parallelized)
+"""
 
 # ╔═╡ 1f0e0805-c59f-468b-ae28-6743ae731319
 function gpu_add1!(y, x)
@@ -152,12 +160,28 @@ begin
 end
 
 # ╔═╡ eb178547-411d-44f3-a831-3d3ece31fb99
-md"## Parallelize over multiple threads"
-
-# ╔═╡ ea8ba8a8-2580-49ac-80e5-ad7584c66999
 md"""
-**Q:** Can you run 'for' loops in parallel on a GPU?
+## Parallelize using several GPU threads
+#### (but only 1 block and thus 1 streaming multiprocessor)
 """
+
+# ╔═╡ e8f99ba4-3665-4a54-8bb4-cdea051575af
+
+with_terminal() do
+	function gpu_add2_print!(y, x)
+	    index = threadIdx().x    # this example only requires linear indexing, so just use `x`
+	    stride = blockDim().x
+	    @cuprintln("thread $index, stride $stride, x_in[$index] $(x[index]), y_in[$index] $(y[index])")
+		for i = index:stride:length(y)
+	        @inbounds y[i] += x[i]
+	    end
+		@cuprintln("thread $index, stride $stride, x_out[$index] $(x[index]), y_out[$index] $(y[index])")
+	    return nothing
+	end
+	
+	@cuda threads=16 gpu_add2_print!(y_d, x_d)
+	synchronize()
+end
 
 # ╔═╡ cdf3bf00-5fdb-42c5-a081-0323988181f5
 function gpu_add2!(y, x)
@@ -192,7 +216,10 @@ begin
 end
 
 # ╔═╡ 25294fc0-58f0-46bb-b769-83dae9b0a770
-md"## Paralelizing with multiple blocks"
+md"""
+## Parallelize using many GPU threads & blocks
+#### (and thus multiple streaming multiprocessor)
+"""
 
 # ╔═╡ 0e95cda9-8e42-41ef-8e55-7251af3dd666
 md"![CUDA array indexing](https://cuda.juliagpu.org/dev/tutorials/intro1.png)"
@@ -268,12 +295,6 @@ begin
 	threads3, blocks3
 end
 
-# ╔═╡ 8372dac8-b303-4268-bb03-6c68003efd27
-
-
-# ╔═╡ 42c0294a-ac40-473d-99b6-5988f0f7d7b9
-
-
 # ╔═╡ c438eb1a-8a82-43d7-9ec4-3563f4997834
 begin
 	fill!(y_d, 2)
@@ -300,7 +321,7 @@ begin
 end
 
 # ╔═╡ deb81f5e-909a-491e-a46a-75aee6e05408
-md"## Generating random numbers"
+md"## Generating random numbers on GPU"
 
 # ╔═╡ b188fe2f-6167-4a26-9079-af6930841f45
 @elapsed rand_nums_h = rand(N)
@@ -321,10 +342,10 @@ CUDA.@allowscalar rand_nums_d[1]
 
 
 # ╔═╡ 75a9093f-c967-490a-95fc-0a5c0bff9430
-md"## A more substantial function"
+md"## A more substantial function on GPU"
 
 # ╔═╡ 57ee851f-3515-4528-baef-a961cbaf058d
-M=1000
+M = 1_000
 
 # ╔═╡ 0c53f4ee-7e7e-431f-acaf-78c0da9b31c1
 md"## GPU Reductions"
@@ -354,6 +375,9 @@ In Intro to GPU use in Julia, a line says "Lower precision is the default and hi
 **A:** No.
 """
 
+# ╔═╡ 4245a99b-a72e-4e2b-96c2-4966d8b942f9
+typeof(x_d)
+
 # ╔═╡ aff487f4-d488-4cc4-bd68-6b777ac1cbe9
 @elapsed (CUDA.@sync y_d.+=x_d)
 
@@ -369,33 +393,13 @@ typeof(x64_d)
 # ╔═╡ 9615390e-e8b4-4a6d-993f-d54da25291c3
 @elapsed (CUDA.@sync y64_d.+=x_d)
 
-# ╔═╡ 20daa3b1-3387-4ebe-8410-db2ce2781ddd
-md"## Comparing to GPUs w/ Julia other languages"
-
-# ╔═╡ c7a60ebc-e9af-49a4-b076-96d82a8fe6fa
-md"""
-**Q:** In the "Performance" section of "An Introduction to GPU Programming in Julia", the authors say that you might expect the GPU performance to suffer from Julia being a dynamic language, but it actually doesn't and Julia's performance is similar to that of something like CUDA or OpenCL. Why is that?
-
-**A:** Julia broadcast and fuse code to reduce kernel calls and memory transfer.
-"""
-
-# ╔═╡ a0aa334d-edc9-4661-8840-708f476e7bc0
-md"### Multi-GPU Computing"
-
-# ╔═╡ 218a0663-c68b-4b67-a60e-9b7b2b4b5155
-md"""
-GPUs have their own memory and therefore, objects and data must be transferred to it from the CPU in order to work on the GPU.
-
-**Q:** Do we need to explicitly load the julia packages onto the GPU as we had to do when working on multiple nodes (each with their own memory)?
-
-**A:** Each process will need to load any packages that it uses.  While you can't load a julia package onto a GPU, you can upload GPU kernels to each GPU.   
-"""
-
 # ╔═╡ 564e577c-3de2-4713-9b49-b4c0ccb8ab65
-
-
-# ╔═╡ 2c0d0496-17bc-44ff-9fb9-6b2ebd598b14
-
+let
+	x_h = fill(1.0f0,N)
+	y_h = fill(2.0f0,N)
+	CUDA.@sync y_h .+= x_h
+	@elapsed CUDA.@sync y_h .+= x_h
+end
 
 # ╔═╡ c5a07dbc-ebcf-4211-be4a-99052f4fd099
 md"## Good questions from previous years"
@@ -408,7 +412,7 @@ md"""
 - Less memory/cache than CPU
 - Lacks branch predictions
 - Kernel launch cost
-
+- Can't (or inefficient to) allocate on heap
 """
 
 # ╔═╡ 7a39ec98-20d9-4fa6-8bfe-4ef450cf267f
@@ -439,81 +443,37 @@ md"""
 
 """
 
-# ╔═╡ 2127ed2a-c4b1-4605-9317-81a91560d831
-md"""
-### Is there a good way to determine some threshold at which it's smart to switch to using a GPU without actually benchmarking the performance?
-
-"""
-
 # ╔═╡ f9da71c3-e1d1-4815-ac45-65deea94d079
 md"""
 ### What if you have multiple GPUs that you want to use in parallel rather than just one?
 ```julia
 DArray{CuArray{Float64,1}}
 ```
-- Naive CUDA supports faster GPU-to-GPU transfers
+
+GPUs have their own memory and therefore, objects and data must be transferred to it from the CPU in order to work on the GPU.
+However, native CUDA supports faster GPU-to-GPU transfers.  
+
+Each process will need to load any packages that it uses.  While you can't load a julia package onto a GPU, you can upload GPU kernels to each GPU.   
+
+"""
+
+# ╔═╡ 2127ed2a-c4b1-4605-9317-81a91560d831
+md"""
+### Is there a good way to determine some threshold at which it's smart to switch to using a GPU without actually benchmarking the performance?
 
 """
 
 # ╔═╡ 8b0b20ea-0f0b-4c13-8344-26cc7a7a15aa
 
 
-# ╔═╡ 19216b89-bd81-4af7-961f-629f2c7dd9b1
-md"# Q&A"
+# ╔═╡ 20daa3b1-3387-4ebe-8410-db2ce2781ddd
+md"## Comparing to GPUs w/ Julia other languages"
 
-# ╔═╡ 161370f1-f7a4-4473-8a39-775e2a0feddd
-
-
-# ╔═╡ e7fc1c20-6404-45e8-8b10-80f0fc7cee09
+# ╔═╡ c7a60ebc-e9af-49a4-b076-96d82a8fe6fa
 md"""
-## Lab 8: GPU Programming
-- [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
-- We have access to NVIDIA P100 GPUs
-- [GPU Comparison](https://en.wikipedia.org/wiki/List_of_Nvidia_graphics_processing_units)
-"""
+**Q:** In the "Performance" section of "An Introduction to GPU Programming in Julia", the authors say that you might expect the GPU performance to suffer from Julia being a dynamic language, but it actually doesn't and Julia's performance is similar to that of something like CUDA or OpenCL. Why is that?
 
-# ╔═╡ 5d30ac34-b58c-4360-88e4-ec3869210f26
-md"""
-## Accessing GPUs
-```bash
-#!/bin/bash
-#PBS -A ebf11_d_g_gc_default # Allocation for class
-#PBS -l nodes=1:ppn=1:gpus=1
-...
-```
-"""
-
-# ╔═╡ b4b87123-90b3-49ee-861a-ffb0f9ba3b94
-
-
-# ╔═╡ e4f9c2ef-f0a4-43c3-85e6-ee833f452e70
-md"""## Pros & Cons of Julia's multithreading options
-### Threads:  
-- Pro:  Part of v1.0 → interface should remain stable
-- Cons: 
-   - Limited functionality
-   - Doesn't translate directly to other forms of parallelism
-### ThreadsX:  
-- Pro:  More features, improved performance
-- Cons:
-   - Risk will need to update your code with new versions
-   - Doesn't translate directly to other forms of parallelism
-### FLoops:
-- Pros:  
-   - More specificity, offers potential for improved performance
-   - Code can be quickly extended for distributed memory systems & GPUs 
-- Cons:
-   - Not as optimized for multi-threading as ThreadsX
-   - Risk will need to update your code with new versions
-### KernelAbstractions:
-- Pro:
-   - Code can be quickly extended for distributed memory systems & GPUs
-   - Designed to scale to GPUs/accelerators
-   - Potential for improved performance, particulalry on GPUs
-- Cons:
-   - Requires rewriting code with vectorized notation, rather than for loop
-   - Not as optimized for multi-threading as ThreadsX
-   - Risk will need to update your code with new versions
+**A:** Julia broadcast and fuse code to reduce kernel calls and memory transfer.
 """
 
 # ╔═╡ 4e7389b0-27a3-11ec-2a6b-ef6f279faef6
@@ -529,23 +489,6 @@ md"""
 - Implementation/optimization of multi-core parallelization (2 points)
 - Significant performance improvement (1 point)
 """
-
-# ╔═╡ e8f99ba4-3665-4a54-8bb4-cdea051575af
-
-with_terminal() do
-	function gpu_add2_print!(y, x)
-	    index = threadIdx().x    # this example only requires linear indexing, so just use `x`
-	    stride = blockDim().x
-	    @cuprintln("thread $index, block $stride")
-	    for i = index:stride:length(y)
-	        @inbounds y[i] += x[i]
-	    end
-	    return nothing
-	end
-	
-	@cuda threads=16 gpu_add2_print!(y_d, x_d)
-	synchronize()
-end
 
 # ╔═╡ c9013543-de41-4ca7-9e62-046b169b95d4
 md"# Helper Code"
@@ -671,805 +614,17 @@ function calc_true_anom(ecc_anom::Real, e::Real)
 end
 
 
-# ╔═╡ 80e4d0cb-ec60-4dfd-a07f-b25161d5410a
-
-
-# ╔═╡ e7bcec7c-f5da-456b-b1d1-732031fda9e8
-
-
-# ╔═╡ e959d821-5809-47c3-8504-6ada2625f9b7
-md"""
-# Lab 7: Using a supercomputing center
-- Submitting jobs to cluster
-- Distributed memory programming
-- Job arrays
-"""
-
-# ╔═╡ 53eeb40f-e7d6-420c-b8ef-19e17ff0b1e7
-md"""
-# Growing into parallelism
-```julia
-in_local = randn(N)
-out_local = zeros(N)
-in_dist = distribute(in_local)
-out_dist = dzeros(N)
-
-function apply_loop!(out::AbstractArray,  f::Function, in::AbstractArray)
-   @assert size(out) == size(in)
-   @sync @distributed for i in 1:length(x)
-      out[i] = f(in[i])
-   end
-   return out
-end
-apply_loop!(out_dist,f,in_dist)
-```
-___
-## Broadcasting for Data-parallelism
-```julia
-x_local = randn(10,10)       # Array{Float64,2}
-x_dist = distribute(x_local) # DArray{Float64,2,Array{Float64,2}}
-x_cu = cu(x_local)           # CuArray{Float64,2}
-f(x) = x*x
-f.(x_local) # Array{Float64,2}
-f.(x_dist)  # DArray{Float64,2,...}
-f.(x_cu)    # CuArray{Float64,2}
-```
-___
-## Map for Data-parallelism
-```julia
-x_local = randn(10,10)       # Array{Float64,2}
-x_dist = distribute(x_local) # DArray{Float64,2,Array{Float64,2}}
-x_cu = cu(x_local)           # CuArray{Float64,2}
-f(x) = x*x
-map(f,x_local) # Array{Float64,2}
-map(f,x_dist)  # DArray{Float64,2,...}
-map(f,x_cu)    # CuArray{Float64,2}
-```
-
-
-"""
-
-# ╔═╡ e0bd59db-a0f2-40d3-a5f7-25d680f8ac9b
-md"""
-# Making parallel programming practical
-### Single Program Multiple Data (SPMD)
-- [Message Passing Interface (MPI)](https://computing.llnl.gov/tutorials/mpi/) ([more tutorials](http://mpitutorial.com/))
-- [DistributedArrays.jl SPMD mode](https://juliaparallel.github.io/DistributedArrays.jl/latest/index.html#SPMD-Mode)
-"""
-
-# ╔═╡ fb3f0de7-8153-416c-8b1b-172d8f54907d
-md"""
-# MPI, the hard way
-- MPI_Send(...)
-- MPI_Recv(...)
-"""
-
-# ╔═╡ c00d3671-e2b5-4723-90a9-b34df8958ba2
-md"""
-```c
-#include "mpi.h"
-#include <stdio.h>
-
-main(int argc, char *argv[])  {
-int numtasks, rank, dest, source, rc, count, tag=1;
-char inmsg, outmsg='x';
-MPI_Status Stat;   // required variable for receive routines
-
-MPI_Init(&argc,&argv);
-MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
-MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-// task 0 sends to task 1 and waits to receive a return message
-if (rank == 0) {
-dest = 1;
-source = 1;
-MPI_Send(&outmsg, 1, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
-MPI_Recv(&inmsg, 1, MPI_CHAR, source, tag, MPI_COMM_WORLD, &Stat);
-}
-
-// task 1 waits for task 0 message then returns a message
-else if (rank == 1) {
-dest = 0;
-source = 0;
-MPI_Recv(&inmsg, 1, MPI_CHAR, source, tag, MPI_COMM_WORLD, &Stat);
-MPI_Send(&outmsg, 1, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
-}
-
-// query recieve Stat variable and print message details
-MPI_Get_count(&Stat, MPI_CHAR, &count);
-printf("Task %d: Received %d char(s) from task %d with tag %d \n",
-rank, count, Stat.MPI_SOURCE, Stat.MPI_TAG);
-
-MPI_Finalize();
-}
-```
-Credit:
-From https://computing.llnl.gov/tutorials/mpi/
-"""
-
-# ╔═╡ 06acfeb0-b1d6-41c0-aff0-2d481d07c169
-md"""
-## Deadlock
-```c
-if (rank == 0) {
-MPI_Send(..., 1, tag, MPI_COMM_WORLD);
-MPI_Recv(..., 1, tag, MPI_COMM_WORLD, &status);
-} else if (rank == 1) {
-MPI_Send(..., 0, tag, MPI_COMM_WORLD);
-MPI_Recv(..., 0, tag, MPI_COMM_WORLD, &status);
-}
-```
-"""
-
-# ╔═╡ a7a1d98a-0f51-45fa-b941-383171d30966
-md"""
-## Avoiding Deadlock by order of calls
-```c
-if (rank == 0) {
-MPI_Send(..., 1, tag, MPI_COMM_WORLD);
-MPI_Recv(..., 1, tag, MPI_COMM_WORLD, &status);
-} else if (rank == 1) {
-MPI_Recv(..., 0, tag, MPI_COMM_WORLD, &status);
-MPI_Send(..., 0, tag, MPI_COMM_WORLD);
-}
-```
-"""
-
-# ╔═╡ ed807e91-2a91-4060-b34e-0ede81920caa
-md"""
-## Avoiding Deadlock with Non-Blocking Communicaions
-```c
-if (rank == 0) {
-MPI_Isend(..., 1, tag, MPI_COMM_WORLD, &req);
-MPI_Recv(..., 1, tag, MPI_COMM_WORLD, &status);
-MPI_Wait(&req, &status);
-} else if (rank == 1) {
-MPI_Recv(..., 0, tag, MPI_COMM_WORLD, &status);
-MPI_Send(..., 0, tag, MPI_COMM_WORLD);
-}
-```
-"""
-
-# ╔═╡ 644e5380-ddfa-4054-b023-b46a95dd1620
-md"""
-## MPI:  Collective Communications
-- MPI_Bcast
-- MPI_Scatter
-- MPI_Gather
-- MPI_Reduce
-- MPI_Barrier
-"""
-
-# ╔═╡ 4d3dba6e-7882-406b-a8c4-914752073298
-md"""
-## MPI:  Collective Communications
-![Collective Communications](https://psuastro528.github.io/images/week8/discuss8_collective_comm.gif)
-
-Image Credit: https://computing.llnl.gov/tutorials/mpi/
-"""
-
-# ╔═╡ f8731d7a-4d8b-490d-bb59-995193fdad3d
-md"""
-## Other MPI Collective Communications
-
-![Broadcast simple](/images/week8/broadcast_pattern.png)
-![broadcast vs scatter](/images/week8/broadcastvsscatter.png)
-
-![gather](/images/week8/gather.png)
-![allgather](/images/week8/allgather.png)
-
-Credit:
-http://mpitutorial.com/tutorials/mpi-scatter-gather-and-allgather/
-"""
-
-# ╔═╡ f17f085c-3a46-468c-a5c5-19fccdd77575
-md"""
-## Implementation of Broadcast
-Simple  vs    Efficient
-
-![Broadcast simple](/images/week8/broadcast_pattern.png)
-vs
-![Broadcast efficient](/images/week8/broadcast_tree.png)
-
-Note:
-http://mpitutorial.com/tutorials/mpi-scatter-gather-and-allgather/
-"""
-
-# ╔═╡ 89535ca3-bf5e-4f52-ac1b-c0bc7b838b6c
-md"""
-## DistributedArray's SPMD mode
-```julia
-@everywhere using DistributedArrays
-@everywhere function square_elements!(x_out, x_in)
- x_out[:L] .= x_in[:L].^2
-end
-d_in  = drand(100)
-d_out = similar(d_in)
-spmd(square_elements!, d_out,d_in; pids=workers())
-```
-"""
-
-# ╔═╡ 774b3bdc-7f6e-4d1b-878e-d2f7cb0b5625
-md"""
-## DistributedArray's SPMD mode's collective communication
-- barrier
-- bcast
-- scatter
-- gather
-
-Note:
-Also
- sendto, recvfrom
- recvfrom_any
-"""
-
-# ╔═╡ 00000000-0000-0000-0000-000000000001
-PLUTO_PROJECT_TOML_CONTENTS = """
-[deps]
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
-PlutoTest = "cb4044da-4d16-4ffa-a6a3-8cad7f73ebdc"
-PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-
-[compat]
-BenchmarkTools = "~1.2.0"
-CUDA = "~3.5.0"
-PlutoTeachingTools = "~0.1.4"
-PlutoTest = "~0.1.2"
-PlutoUI = "~0.7.15"
-"""
-
-# ╔═╡ 00000000-0000-0000-0000-000000000002
-PLUTO_MANIFEST_TOML_CONTENTS = """
-# This file is machine-generated - editing it directly is not advised
-
-julia_version = "1.9.2"
-manifest_format = "2.0"
-project_hash = "47b79fd45ee71e585a3d714fe9fb51ab3244e18c"
-
-[[deps.AbstractFFTs]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "d92ad398961a3ed262d8bf04a1a2b8340f915fef"
-uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
-version = "1.5.0"
-weakdeps = ["ChainRulesCore", "Test"]
-
-    [deps.AbstractFFTs.extensions]
-    AbstractFFTsChainRulesCoreExt = "ChainRulesCore"
-    AbstractFFTsTestExt = "Test"
-
-[[deps.AbstractPlutoDingetjes]]
-deps = ["Pkg"]
-git-tree-sha1 = "91bd53c39b9cbfb5ef4b015e8b582d344532bd0a"
-uuid = "6e696c72-6542-2067-7265-42206c756150"
-version = "1.2.0"
-
-[[deps.Adapt]]
-deps = ["LinearAlgebra", "Requires"]
-git-tree-sha1 = "76289dc51920fdc6e0013c872ba9551d54961c24"
-uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-version = "3.6.2"
-
-    [deps.Adapt.extensions]
-    AdaptStaticArraysExt = "StaticArrays"
-
-    [deps.Adapt.weakdeps]
-    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-
-[[deps.ArgTools]]
-uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
-version = "1.1.1"
-
-[[deps.Artifacts]]
-uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
-
-[[deps.BFloat16s]]
-deps = ["LinearAlgebra", "Printf", "Random", "Test"]
-git-tree-sha1 = "a598ecb0d717092b5539dbbe890c98bac842b072"
-uuid = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
-version = "0.2.0"
-
-[[deps.Base64]]
-uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
-
-[[deps.BenchmarkTools]]
-deps = ["JSON", "Logging", "Printf", "Profile", "Statistics", "UUIDs"]
-git-tree-sha1 = "940001114a0147b6e4d10624276d56d531dd9b49"
-uuid = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-version = "1.2.2"
-
-[[deps.CEnum]]
-git-tree-sha1 = "eb4cb44a499229b3b8426dcfb5dd85333951ff90"
-uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
-version = "0.4.2"
-
-[[deps.CUDA]]
-deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CompilerSupportLibraries_jll", "ExprTools", "GPUArrays", "GPUCompiler", "LLVM", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "SpecialFunctions", "TimerOutputs"]
-git-tree-sha1 = "2c8329f16addffd09e6ca84c556e2185a4933c64"
-uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "3.5.0"
-
-[[deps.ChainRulesCore]]
-deps = ["Compat", "LinearAlgebra"]
-git-tree-sha1 = "e0af648f0692ec1691b5d094b8724ba1346281cf"
-uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.18.0"
-weakdeps = ["SparseArrays"]
-
-    [deps.ChainRulesCore.extensions]
-    ChainRulesCoreSparseArraysExt = "SparseArrays"
-
-[[deps.CodeTracking]]
-deps = ["InteractiveUtils", "UUIDs"]
-git-tree-sha1 = "c0216e792f518b39b22212127d4a84dc31e4e386"
-uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
-version = "1.3.5"
-
-[[deps.ColorTypes]]
-deps = ["FixedPointNumbers", "Random"]
-git-tree-sha1 = "eb7f0f8307f71fac7c606984ea5fb2817275d6e4"
-uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
-version = "0.11.4"
-
-[[deps.Compat]]
-deps = ["UUIDs"]
-git-tree-sha1 = "8a62af3e248a8c4bad6b32cbbe663ae02275e32c"
-uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "4.10.0"
-weakdeps = ["Dates", "LinearAlgebra"]
-
-    [deps.Compat.extensions]
-    CompatLinearAlgebraExt = "LinearAlgebra"
-
-[[deps.CompilerSupportLibraries_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+0"
-
-[[deps.Dates]]
-deps = ["Printf"]
-uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
-
-[[deps.Distributed]]
-deps = ["Random", "Serialization", "Sockets"]
-uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
-
-[[deps.DocStringExtensions]]
-deps = ["LibGit2"]
-git-tree-sha1 = "2fb1e02f2b635d0845df5d7c167fec4dd739b00d"
-uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
-version = "0.9.3"
-
-[[deps.Downloads]]
-deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
-uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
-version = "1.6.0"
-
-[[deps.ExprTools]]
-git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
-uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
-version = "0.1.10"
-
-[[deps.FileWatching]]
-uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
-
-[[deps.FixedPointNumbers]]
-deps = ["Statistics"]
-git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
-uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
-version = "0.8.4"
-
-[[deps.Formatting]]
-deps = ["Printf"]
-git-tree-sha1 = "8339d61043228fdd3eb658d86c926cb282ae72a8"
-uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
-version = "0.4.2"
-
-[[deps.GPUArrays]]
-deps = ["Adapt", "GPUArraysCore", "LLVM", "LinearAlgebra", "Printf", "Random", "Reexport", "Serialization", "Statistics"]
-git-tree-sha1 = "2e57b4a4f9cc15e85a24d603256fe08e527f48d1"
-uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "8.8.1"
-
-[[deps.GPUArraysCore]]
-deps = ["Adapt"]
-git-tree-sha1 = "2d6ca471a6c7b536127afccfa7564b5b39227fe0"
-uuid = "46192b85-c4d5-4398-a991-12ede77f4527"
-version = "0.1.5"
-
-[[deps.GPUCompiler]]
-deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "647a54f196b5ffb7c3bc2fec5c9a57fa273354cc"
-uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.13.14"
-
-[[deps.Hyperscript]]
-deps = ["Test"]
-git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
-uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
-version = "0.0.4"
-
-[[deps.HypertextLiteral]]
-deps = ["Tricks"]
-git-tree-sha1 = "c47c5fa4c5308f27ccaac35504858d8914e102f9"
-uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.4"
-
-[[deps.IOCapture]]
-deps = ["Logging", "Random"]
-git-tree-sha1 = "d75853a0bdbfb1ac815478bacd89cd27b550ace6"
-uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
-version = "0.2.3"
-
-[[deps.InteractiveUtils]]
-deps = ["Markdown"]
-uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-
-[[deps.IrrationalConstants]]
-git-tree-sha1 = "7fd44fd4ff43fc60815f8e764c0f352b83c49151"
-uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
-version = "0.1.1"
-
-[[deps.JLLWrappers]]
-deps = ["Artifacts", "Preferences"]
-git-tree-sha1 = "7e5d6779a1e09a36db2a7b6cff50942a0a7d0fca"
-uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.5.0"
-
-[[deps.JSON]]
-deps = ["Dates", "Mmap", "Parsers", "Unicode"]
-git-tree-sha1 = "31e996f0a15c7b280ba9f76636b3ff9e2ae58c9a"
-uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.21.4"
-
-[[deps.JuliaInterpreter]]
-deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "0592b1810613d1c95eeebcd22dc11fba186c2a57"
-uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.9.26"
-
-[[deps.LLVM]]
-deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Printf", "Unicode"]
-git-tree-sha1 = "f044a2796a9e18e0531b9b3072b0019a61f264bc"
-uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "4.17.1"
-
-[[deps.LLVMExtra_jll]]
-deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "070e4b5b65827f82c16ae0916376cb47377aa1b5"
-uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
-version = "0.0.18+0"
-
-[[deps.LaTeXStrings]]
-git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
-uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
-version = "1.3.0"
-
-[[deps.Latexify]]
-deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Printf", "Requires"]
-git-tree-sha1 = "8c57307b5d9bb3be1ff2da469063628631d4d51e"
-uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
-version = "0.15.21"
-
-    [deps.Latexify.extensions]
-    DataFramesExt = "DataFrames"
-    DiffEqBiologicalExt = "DiffEqBiological"
-    ParameterizedFunctionsExt = "DiffEqBase"
-    SymEngineExt = "SymEngine"
-
-    [deps.Latexify.weakdeps]
-    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-    DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
-    DiffEqBiological = "eb300fae-53e8-50a0-950c-e21f52c2b7e0"
-    SymEngine = "123dc426-2d89-5057-bbad-38513e3affd8"
-
-[[deps.LazyArtifacts]]
-deps = ["Artifacts", "Pkg"]
-uuid = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
-
-[[deps.LibCURL]]
-deps = ["LibCURL_jll", "MozillaCACerts_jll"]
-uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
-version = "0.6.3"
-
-[[deps.LibCURL_jll]]
-deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
-uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "7.84.0+0"
-
-[[deps.LibGit2]]
-deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
-uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
-
-[[deps.LibSSH2_jll]]
-deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
-uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.10.2+0"
-
-[[deps.Libdl]]
-uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
-
-[[deps.LinearAlgebra]]
-deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
-uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-
-[[deps.LogExpFunctions]]
-deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
-git-tree-sha1 = "7d6dd4e9212aebaeed356de34ccf262a3cd415aa"
-uuid = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
-version = "0.3.26"
-
-    [deps.LogExpFunctions.extensions]
-    LogExpFunctionsChainRulesCoreExt = "ChainRulesCore"
-    LogExpFunctionsChangesOfVariablesExt = "ChangesOfVariables"
-    LogExpFunctionsInverseFunctionsExt = "InverseFunctions"
-
-    [deps.LogExpFunctions.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
-    InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
-
-[[deps.Logging]]
-uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
-
-[[deps.LoweredCodeUtils]]
-deps = ["JuliaInterpreter"]
-git-tree-sha1 = "60168780555f3e663c536500aa790b6368adc02a"
-uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
-version = "2.3.0"
-
-[[deps.MIMEs]]
-git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
-uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
-version = "0.1.4"
-
-[[deps.MacroTools]]
-deps = ["Markdown", "Random"]
-git-tree-sha1 = "9ee1618cbf5240e6d4e0371d6f24065083f60c48"
-uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.5.11"
-
-[[deps.Markdown]]
-deps = ["Base64"]
-uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
-
-[[deps.MbedTLS_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+0"
-
-[[deps.Mmap]]
-uuid = "a63ad114-7e13-5084-954f-fe012c677804"
-
-[[deps.MozillaCACerts_jll]]
-uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2022.10.11"
-
-[[deps.NetworkOptions]]
-uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
-version = "1.2.0"
-
-[[deps.OpenBLAS_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
-uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.21+4"
-
-[[deps.OpenLibm_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+0"
-
-[[deps.OpenSpecFun_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
-uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
-version = "0.5.5+0"
-
-[[deps.OrderedCollections]]
-git-tree-sha1 = "2e73fe17cac3c62ad1aebe70d44c963c3cfdc3e3"
-uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.6.2"
-
-[[deps.Parsers]]
-deps = ["Dates", "PrecompileTools", "UUIDs"]
-git-tree-sha1 = "716e24b21538abc91f6205fd1d8363f39b442851"
-uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.7.2"
-
-[[deps.Pkg]]
-deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
-uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.9.2"
-
-[[deps.PlutoHooks]]
-deps = ["InteractiveUtils", "Markdown", "UUIDs"]
-git-tree-sha1 = "072cdf20c9b0507fdd977d7d246d90030609674b"
-uuid = "0ff47ea0-7a50-410d-8455-4348d5de0774"
-version = "0.0.5"
-
-[[deps.PlutoLinks]]
-deps = ["FileWatching", "InteractiveUtils", "Markdown", "PlutoHooks", "Revise", "UUIDs"]
-git-tree-sha1 = "8f5fa7056e6dcfb23ac5211de38e6c03f6367794"
-uuid = "0ff47ea0-7a50-410d-8455-4348d5de0420"
-version = "0.1.6"
-
-[[deps.PlutoTeachingTools]]
-deps = ["Downloads", "HypertextLiteral", "LaTeXStrings", "Latexify", "Markdown", "PlutoLinks", "PlutoUI", "Random"]
-git-tree-sha1 = "67c917d383c783aeadd25babad6625b834294b30"
-uuid = "661c6b06-c737-4d37-b85c-46df65de6f69"
-version = "0.1.7"
-
-[[deps.PlutoTest]]
-deps = ["HypertextLiteral", "InteractiveUtils", "Markdown", "Test"]
-git-tree-sha1 = "b7da10d62c1ffebd37d4af8d93ee0003e9248452"
-uuid = "cb4044da-4d16-4ffa-a6a3-8cad7f73ebdc"
-version = "0.1.2"
-
-[[deps.PlutoUI]]
-deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
-git-tree-sha1 = "e47cd150dbe0443c3a3651bc5b9cbd5576ab75b7"
-uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.52"
-
-[[deps.PrecompileTools]]
-deps = ["Preferences"]
-git-tree-sha1 = "03b4c25b43cb84cee5c90aa9b5ea0a78fd848d2f"
-uuid = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
-version = "1.2.0"
-
-[[deps.Preferences]]
-deps = ["TOML"]
-git-tree-sha1 = "00805cd429dcb4870060ff49ef443486c262e38e"
-uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.4.1"
-
-[[deps.Printf]]
-deps = ["Unicode"]
-uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-
-[[deps.Profile]]
-deps = ["Printf"]
-uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
-
-[[deps.REPL]]
-deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
-uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
-
-[[deps.Random]]
-deps = ["SHA", "Serialization"]
-uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-
-[[deps.Random123]]
-deps = ["Random", "RandomNumbers"]
-git-tree-sha1 = "552f30e847641591ba3f39fd1bed559b9deb0ef3"
-uuid = "74087812-796a-5b5d-8853-05524746bad3"
-version = "1.6.1"
-
-[[deps.RandomNumbers]]
-deps = ["Random", "Requires"]
-git-tree-sha1 = "043da614cc7e95c703498a491e2c21f58a2b8111"
-uuid = "e6cf234a-135c-5ec9-84dd-332b85af5143"
-version = "1.5.3"
-
-[[deps.Reexport]]
-git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
-uuid = "189a3867-3050-52da-a836-e630ba90ab69"
-version = "1.2.2"
-
-[[deps.Requires]]
-deps = ["UUIDs"]
-git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
-uuid = "ae029012-a4dd-5104-9daa-d747884805df"
-version = "1.3.0"
-
-[[deps.Revise]]
-deps = ["CodeTracking", "Distributed", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "Pkg", "REPL", "Requires", "UUIDs", "Unicode"]
-git-tree-sha1 = "609c26951d80551620241c3d7090c71a73da75ab"
-uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
-version = "3.5.6"
-
-[[deps.SHA]]
-uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
-version = "0.7.0"
-
-[[deps.Serialization]]
-uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
-
-[[deps.Sockets]]
-uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
-
-[[deps.SparseArrays]]
-deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
-uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-
-[[deps.SpecialFunctions]]
-deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
-git-tree-sha1 = "6da46b16e6bca4abe1b6c6fa40b94beb0c87f4ac"
-uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "1.8.8"
-
-[[deps.Statistics]]
-deps = ["LinearAlgebra", "SparseArrays"]
-uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-version = "1.9.0"
-
-[[deps.SuiteSparse_jll]]
-deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
-uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "5.10.1+6"
-
-[[deps.TOML]]
-deps = ["Dates"]
-uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
-version = "1.0.3"
-
-[[deps.Tar]]
-deps = ["ArgTools", "SHA"]
-uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
-version = "1.10.0"
-
-[[deps.Test]]
-deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
-uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[[deps.TimerOutputs]]
-deps = ["ExprTools", "Printf"]
-git-tree-sha1 = "f548a9e9c490030e545f72074a41edfd0e5bcdd7"
-uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-version = "0.5.23"
-
-[[deps.Tricks]]
-git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
-uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
-version = "0.1.8"
-
-[[deps.URIs]]
-git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
-uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
-version = "1.5.1"
-
-[[deps.UUIDs]]
-deps = ["Random", "SHA"]
-uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
-
-[[deps.Unicode]]
-uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
-
-[[deps.Zlib_jll]]
-deps = ["Libdl"]
-uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.13+0"
-
-[[deps.libblastrampoline_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+0"
-
-[[deps.nghttp2_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.48.0+0"
-
-[[deps.p7zip_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.4.0+0"
-"""
-
 # ╔═╡ Cell order:
 # ╟─4e6cb703-b011-4f8a-8c9a-4863459ee7a2
 # ╟─dddb4b7c-b23c-41a4-ae2a-d75bab617104
 # ╟─aecdcdbc-5ef6-4a7b-bd65-d01ed1cfe497
 # ╟─f7fdc34c-2c99-493d-9977-f206bb7a2810
 # ╟─545d6631-9a06-4e59-a306-cddc6d405689
-# ╟─f3165718-746e-431d-9e2d-e1ce39722d4d
-# ╠═0775d839-6823-4a81-8f73-7eaefd59f913
 # ╠═966b8013-e804-4fe3-89ea-90d07df41d16
 # ╟─4d6df8fc-80f0-4b19-a014-bc626e068c92
 # ╟─fbfef453-7ef1-4ceb-8f51-2732766cacc9
-# ╠═91b9986d-049d-495e-be57-f288c051ec2a
-# ╠═8329f763-d540-4068-bc29-91e88803f4fc
+# ╟─e7fc1c20-6404-45e8-8b10-80f0fc7cee09
+# ╟─5d30ac34-b58c-4360-88e4-ec3869210f26
 # ╟─7cd03755-04c5-4bd7-8d10-2c563dc377a5
 # ╠═ddcb4895-9357-417a-ad72-c100c83d1799
 # ╟─2e192dec-84c0-4e60-af9d-1da9286945e3
@@ -1485,7 +640,7 @@ version = "17.4.0+0"
 # ╠═481a222f-5fde-4797-8b90-604b0d79fac5
 # ╠═78226676-9bf9-402d-8b8a-4f8865137842
 # ╟─eb178547-411d-44f3-a831-3d3ece31fb99
-# ╟─ea8ba8a8-2580-49ac-80e5-ad7584c66999
+# ╠═e8f99ba4-3665-4a54-8bb4-cdea051575af
 # ╠═cdf3bf00-5fdb-42c5-a081-0323988181f5
 # ╠═cf452f9c-ec9f-48dd-8ab3-25310649ebc2
 # ╠═ccd374b3-8c80-4a01-a6e0-b4fdd5a136e3
@@ -1506,8 +661,6 @@ version = "17.4.0+0"
 # ╠═581a161f-5148-433f-9e5f-9b15766c502b
 # ╟─eba3e72c-1627-45e7-b89e-92870ce09610
 # ╠═37630a37-2bcc-4afa-8c59-ae4090da0fd9
-# ╠═8372dac8-b303-4268-bb03-6c68003efd27
-# ╠═42c0294a-ac40-473d-99b6-5988f0f7d7b9
 # ╠═c438eb1a-8a82-43d7-9ec4-3563f4997834
 # ╠═e86317b5-d989-4149-a160-54e34b3df7b3
 # ╠═e3c738cd-9229-4c8e-97b3-0923491f4129
@@ -1534,55 +687,27 @@ version = "17.4.0+0"
 # ╟─95794ae3-abb8-49a8-92bf-cb75de1f108b
 # ╟─14d79ca1-7037-4c06-a352-1e54ca8c9d6c
 # ╟─e7df0dc5-f448-4a6a-9fd3-cca19c5cb846
+# ╠═4245a99b-a72e-4e2b-96c2-4966d8b942f9
 # ╠═aff487f4-d488-4cc4-bd68-6b777ac1cbe9
-# ╠═3f59d971-80b7-461a-a346-b4d290f8eedf
 # ╠═fee2a0d5-c783-4cfc-8379-fede199644e4
+# ╠═3f59d971-80b7-461a-a346-b4d290f8eedf
 # ╠═9615390e-e8b4-4a6d-993f-d54da25291c3
-# ╟─20daa3b1-3387-4ebe-8410-db2ce2781ddd
-# ╟─c7a60ebc-e9af-49a4-b076-96d82a8fe6fa
-# ╟─a0aa334d-edc9-4661-8840-708f476e7bc0
-# ╟─218a0663-c68b-4b67-a60e-9b7b2b4b5155
 # ╠═564e577c-3de2-4713-9b49-b4c0ccb8ab65
-# ╠═2c0d0496-17bc-44ff-9fb9-6b2ebd598b14
 # ╟─c5a07dbc-ebcf-4211-be4a-99052f4fd099
 # ╟─9dc882c8-fd9f-4235-8b33-4b1234031206
 # ╟─7a39ec98-20d9-4fa6-8bfe-4ef450cf267f
 # ╟─57319751-a103-4d2d-bc04-efab118ad306
 # ╟─d289afdb-0095-42c4-99c3-1733f9d819cc
-# ╟─2127ed2a-c4b1-4605-9317-81a91560d831
 # ╟─f9da71c3-e1d1-4815-ac45-65deea94d079
+# ╟─2127ed2a-c4b1-4605-9317-81a91560d831
 # ╠═8b0b20ea-0f0b-4c13-8344-26cc7a7a15aa
-# ╟─19216b89-bd81-4af7-961f-629f2c7dd9b1
-# ╠═161370f1-f7a4-4473-8a39-775e2a0feddd
-# ╟─e7fc1c20-6404-45e8-8b10-80f0fc7cee09
-# ╟─5d30ac34-b58c-4360-88e4-ec3869210f26
-# ╠═b4b87123-90b3-49ee-861a-ffb0f9ba3b94
-# ╟─e4f9c2ef-f0a4-43c3-85e6-ee833f452e70
+# ╟─20daa3b1-3387-4ebe-8410-db2ce2781ddd
+# ╟─c7a60ebc-e9af-49a4-b076-96d82a8fe6fa
 # ╟─4e7389b0-27a3-11ec-2a6b-ef6f279faef6
-# ╠═e8f99ba4-3665-4a54-8bb4-cdea051575af
 # ╟─c9013543-de41-4ca7-9e62-046b169b95d4
 # ╠═c76b6672-53df-4fd1-a39a-609248914446
-# ╠═2aa60451-2e25-4b9d-ba0c-13b416f0d7af
 # ╟─cd462e4f-9960-45ac-85c1-dd5d8ac03860
 # ╠═cc0b7506-7e6c-4c54-87ba-6a1444f87b23
 # ╠═11c72f42-781a-4848-b546-3e37aa1e85bc
 # ╠═8ee5e52c-1374-4eb9-8485-c179dce0ac1b
 # ╠═3213f99c-79e6-4eb2-aa88-7c02e0a81891
-# ╠═80e4d0cb-ec60-4dfd-a07f-b25161d5410a
-# ╠═e7bcec7c-f5da-456b-b1d1-732031fda9e8
-# ╟─e959d821-5809-47c3-8504-6ada2625f9b7
-# ╟─53eeb40f-e7d6-420c-b8ef-19e17ff0b1e7
-# ╟─e0bd59db-a0f2-40d3-a5f7-25d680f8ac9b
-# ╟─fb3f0de7-8153-416c-8b1b-172d8f54907d
-# ╟─c00d3671-e2b5-4723-90a9-b34df8958ba2
-# ╟─06acfeb0-b1d6-41c0-aff0-2d481d07c169
-# ╟─a7a1d98a-0f51-45fa-b941-383171d30966
-# ╟─ed807e91-2a91-4060-b34e-0ede81920caa
-# ╟─644e5380-ddfa-4054-b023-b46a95dd1620
-# ╟─4d3dba6e-7882-406b-a8c4-914752073298
-# ╟─f8731d7a-4d8b-490d-bb59-995193fdad3d
-# ╟─f17f085c-3a46-468c-a5c5-19fccdd77575
-# ╠═89535ca3-bf5e-4f52-ac1b-c0bc7b838b6c
-# ╟─774b3bdc-7f6e-4d1b-878e-d2f7cb0b5625
-# ╟─00000000-0000-0000-0000-000000000001
-# ╟─00000000-0000-0000-0000-000000000002

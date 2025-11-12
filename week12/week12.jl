@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.18
+# v0.20.10
 
 using Markdown
 using InteractiveUtils
@@ -432,6 +432,31 @@ if ran_matmul_adjoint_kernel
 	@test da ≈ copy_dc * b'
 end
 
+# ╔═╡ 47102f43-f526-481b-98a8-b98bc9050bbc
+md"""
+## Reproduciblity for multi-language projects
+"""
+
+# ╔═╡ 542a6feb-28cc-420a-afd2-63b67aa3dcd1
+blockquote(md"""
+Is it possible to add packages that aren't written in Julia?
+""")
+
+# ╔═╡ 7ac09e96-211a-4c65-94ab-9b1f305ea561
+md"""
+### Option 1:  Provide environment for each language you use.  
+
+E.g., When you install PyCall, Julia installs miniconda .  You can use that to add packages to a conda environments for your python calls.  In theory, your `dep/build.jl` script can automatically setup the conda environment needed for your package.  At least for me, it's easy to to get confused when doing this.
+
+### Option 2: Virtual Machines
+Most flexible & secure, but need to install and maintain _everything_, even the OS, security patches, etc.  Likely requires root.  
+
+### Option 3: Containers:  
+Specify what software to be installed, but assume basic OS is provided.
+   - [Docker](https://docs.docker.com/):  Currently, most popular for public
+   - [Apptainer](https://apptainer.org/):  More common for supercomputing environments
+"""
+
 # ╔═╡ 316b2027-b3a6-45d6-9b65-e26b4ab42e5e
 md"""
 # Priorities for Scientific Computing
@@ -553,6 +578,9 @@ md"# Helper Code"
 # ╠═f3bca4b1-1ff1-42ba-84a2-46f37bcd20b5
 # ╠═62ace3b8-0e38-4150-80e6-2488d19f8d5d
 # ╠═25dd3208-1b76-4122-9de4-7c177f136b6d
+# ╠═47102f43-f526-481b-98a8-b98bc9050bbc
+# ╠═542a6feb-28cc-420a-afd2-63b67aa3dcd1
+# ╠═7ac09e96-211a-4c65-94ab-9b1f305ea561
 # ╟─316b2027-b3a6-45d6-9b65-e26b4ab42e5e
 # ╟─d8ce73d3-d4eb-4d2e-b5e6-88afe0920a47
 # ╟─32a91cb9-9f16-45c7-b844-b3bef1476360

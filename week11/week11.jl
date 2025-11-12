@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.17
+# v0.20.18
 
 using Markdown
 using InteractiveUtils
@@ -28,7 +28,7 @@ end
 md"> Astro 528: High-Performance Scientific Computing for Astrophysics (Fall 2025)"
 
 # ╔═╡ a21b553b-eecb-4105-a0ed-d936e500788b
-ChooseDisplayMode()
+WidthOverDocs()
 
 # ╔═╡ afe9b7c1-d031-4e1f-bd5b-5aeed30d7048
 md"ToC on side $(@bind toc_aside CheckBox(;default=true))"
@@ -317,7 +317,7 @@ For details and more examples, see [documentation](https://pkgdocs.julialang.org
 # ╔═╡ 4b91ac07-dec5-4c92-b7e7-81a6d742ccdd
 md"""
 ## Pluto & Package Management/Environments
-Pluto has [it's own package manager](https://github.com/fonsp/Pluto.jl/wiki/%F0%9F%8E%81-Package-management)!
+Pluto has [it's own package manager](https://plutojl.org/en/docs/packages/)!
 - Automatically creates a new temporary environment for each notebook, based on where it sees `using` or `import` and a package name.
    - Great for reproducibility
    - Adds some extra startup time
@@ -362,29 +362,24 @@ md"""
 # Creating your own package
 - Create a bare-bones package (Project.toml and `src/ExamplePkg.jl` that contains a module named `ExamplePkg`) by 
 ```shell
-mkdir fresh_directory
-cd fresh_directory
 julia -e 'using Pkg; Pkg.generate("ExamplePkg")'
+cd ExamplePkg
 ```
 - Add packages that your package will depend on.
-```julia
-using Pkg
-Pkg.activate(".")
-Pkg.add(["CSV","DataFrames"])
+```shell
+cd ExamplePkg
+julia --project
 ```
-- Install packages that your package depends on (and generates Manifest.toml if missing):
 ```julia
-using Pkg
-Pkg.activate(".")
-Pkg.instantiate()
+import Pkg
+Pkg.add(["CSV","DataFrames"])
 ```
 - Access your barebones package by
 ```julia
-using Pkg
-Pkg.activate(".")
 using ExamplePkg
 ```
-- In [Lab 9](https://github.com/PsuAstro528/lab9-start) will connect to GitHub and add other key package components (e.g., license, tests, etc.)
+
+- In [Lab 9](https://github.com/PsuAstro528/lab9), you can practice and add other common package components (e.g., license, tests, documentation, etc.)
 
 """
 
@@ -422,9 +417,14 @@ Use `develop`:
 # ╔═╡ 1b50b18f-1ce6-4ea7-81b3-4b1024736509
 md"""
 ## Registering a package
-**Q:** How can a package be added to a registry?"
+"""
 
-**A:** [Registrator.jl](https://github.com/JuliaRegistries/Registrator.jl)
+# ╔═╡ 16610dc4-4db4-4b41-a71a-ebc9a52c3265
+blockquote(md"""How can I add my package to the General Julia registry?""")
+
+# ╔═╡ 70408970-1683-423d-9f7d-dbd05d67a09a
+md"""
+[Registrator.jl](https://github.com/JuliaRegistries/Registrator.jl)
 
 !["amelia robot logo"](https://raw.githubusercontent.com/JuliaRegistries/Registrator.jl/master/graphics/logo.png)
 
@@ -521,29 +521,6 @@ Pkg.instantiate()
 ```
 """
 
-# ╔═╡ dda25ec4-fb92-45ad-972b-f1280a9bcee6
-md"""
-# Software Papers
-"""
-
-# ╔═╡ 69b1eb2f-77f5-4be8-a7d6-d0a96492426d
-blockquote(md"""
-How does the paper writing process differ between the traditional publishing of scientific results/discoveries versus software developments (such as a the creation of a simulation, a package for scientific use, or a data pipeline)?
-""")
-
-# ╔═╡ 1448a5f5-3338-400f-afab-cea76667367a
-md"""
-[AAS Guidelines for software articles](https://journals.aas.org/policy-statement-on-software/)
-
-AAS Journals welcome articles which describe the design and function of software of relevance to research in astronomy and astrophysics. Such articles should contain a description of the software, its novel features and its intended use. Such articles need not include research results produced using the software, although including examples of applications can be helpful. There is no minimum length requirement for software articles.
-
-If a piece of novel software is important to published research then it is likely appropriate to describe it in such an article.
-...
-"""
-
-# ╔═╡ 91bdebcb-f2ef-40b9-95b1-bdbefc0a7723
-
-
 # ╔═╡ 2d63cb1a-2bbb-435c-b672-8b6a3f74e6ac
 md"""
 # Overview Reproduciblity & Julia 
@@ -604,16 +581,36 @@ Specify what software to be installed, but assume basic OS is provided.
    - [Apptainer](https://apptainer.org/):  More common for supercomputing environments
 """
 
+# ╔═╡ dda25ec4-fb92-45ad-972b-f1280a9bcee6
+md"""
+# Software Papers
+"""
+
+# ╔═╡ 69b1eb2f-77f5-4be8-a7d6-d0a96492426d
+blockquote(md"""
+How does the paper writing process differ between the traditional publishing of scientific results/discoveries versus software developments (such as a the creation of a simulation, a package for scientific use, or a data pipeline)?
+""")
+
+# ╔═╡ 1448a5f5-3338-400f-afab-cea76667367a
+md"""
+[AAS Guidelines for software articles](https://journals.aas.org/policy-statement-on-software/)
+
+AAS Journals welcome articles which describe the design and function of software of relevance to research in astronomy and astrophysics. Such articles should contain a description of the software, its novel features and its intended use. Such articles need not include research results produced using the software, although including examples of applications can be helpful. There is no minimum length requirement for software articles.
+
+If a piece of novel software is important to published research then it is likely appropriate to describe it in such an article.
+...
+"""
+
 # ╔═╡ b6b281af-64a1-44b4-a9b6-ee0ba17f5c0b
 md"""
 # Selected Old Questions
 """
 
-# ╔═╡ 33470afe-08d0-4639-b1ff-92591a416cb0
-md"""
-**Q:** If the hardware/processor changes, will the container still work or a new container have to be developed?
+# ╔═╡ 74b6d7b2-c09d-4d14-805b-969bdd1f0cbf
+md"""**Q:** 
+How do we make sure the right packages are added when someone else runs our code without telling it to install the package every time (since we'll already have it, or they will after the first time they run it)?
 
-**A:** It depends on whether the new processor is in the same family and whether code was compiled for general or specific processor.  If your code doesn't need low-level access to hardware, then specify an environment means you don't need to worry about those changes.
+**A:** `Pkg.instantiate()` makes sure they have the right packages installed.  That may require installing packages.  
 """
 
 # ╔═╡ 44258160-f9e9-4361-bf16-402edb61a65b
@@ -627,11 +624,11 @@ It depends:
 - Code snippet for making one figure:  Not a package.  Likely a script or directory of files in a git repo.  Maybe a [*gist*](https://gist.github.com/).
 """
 
-# ╔═╡ 74b6d7b2-c09d-4d14-805b-969bdd1f0cbf
-md"""**Q:** 
-How do we make sure the right packages are added when someone else runs our code without telling it to install the package every time (since we'll already have it, or they will after the first time they run it)?
+# ╔═╡ 33470afe-08d0-4639-b1ff-92591a416cb0
+md"""
+**Q:** If the hardware/processor changes, will the container still work or a new container have to be developed?
 
-**A:** `Pkg.instantiate()` makes sure they have the right packages installed.  That may require installing packages.  
+**A:** It depends on whether the new processor is in the same family and whether code was compiled for general or specific processor.  If your code doesn't need low-level access to hardware, then specify an environment means you don't need to worry about those changes.
 """
 
 # ╔═╡ de28eb94-6d7d-44c4-848c-5db84495939b
@@ -1105,6 +1102,8 @@ version = "17.4.0+2"
 # ╟─534d4ee9-687d-4187-b9e7-fcfb73525b89
 # ╟─2ef9d590-2ecd-4123-92ad-d972d5aa8c88
 # ╟─1b50b18f-1ce6-4ea7-81b3-4b1024736509
+# ╟─16610dc4-4db4-4b41-a71a-ebc9a52c3265
+# ╟─70408970-1683-423d-9f7d-dbd05d67a09a
 # ╟─de682378-9bf5-46d9-bf35-16480dc61327
 # ╟─898dc66d-0229-474a-a2c8-3163c6e8d0da
 # ╟─52d33a27-6bb4-4325-b047-7625103f2b78
@@ -1114,16 +1113,15 @@ version = "17.4.0+2"
 # ╟─0b1b8e65-fe71-4f72-8d84-95d0b22f48a4
 # ╟─192ffc58-34cf-4d90-b68d-998b9d299c2b
 # ╟─9516f9b4-1d17-490c-ac51-1c04859ec553
-# ╟─dda25ec4-fb92-45ad-972b-f1280a9bcee6
-# ╟─69b1eb2f-77f5-4be8-a7d6-d0a96492426d
-# ╟─1448a5f5-3338-400f-afab-cea76667367a
-# ╠═91bdebcb-f2ef-40b9-95b1-bdbefc0a7723
 # ╟─2d63cb1a-2bbb-435c-b672-8b6a3f74e6ac
 # ╟─8f0b9223-c042-4a0d-90cc-cbd1a854358a
 # ╟─3d069f53-6e8f-45fd-98db-0b75a1b56bb6
 # ╟─0e580f04-b678-4ee7-bb37-3d8723a0900e
 # ╟─0fe5560e-35e5-4133-a790-b85eb212753e
-# ╠═5a2f59d4-19b9-4ace-be8a-3b5f62fbb6c5
+# ╟─5a2f59d4-19b9-4ace-be8a-3b5f62fbb6c5
+# ╟─dda25ec4-fb92-45ad-972b-f1280a9bcee6
+# ╟─69b1eb2f-77f5-4be8-a7d6-d0a96492426d
+# ╟─1448a5f5-3338-400f-afab-cea76667367a
 # ╟─b6b281af-64a1-44b4-a9b6-ee0ba17f5c0b
 # ╟─74b6d7b2-c09d-4d14-805b-969bdd1f0cbf
 # ╟─44258160-f9e9-4361-bf16-402edb61a65b

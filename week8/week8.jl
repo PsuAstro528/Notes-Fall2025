@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.16
+# v0.20.18
 
 using Markdown
 using InteractiveUtils
@@ -25,17 +25,23 @@ using Memoize
 # ╔═╡ 7a719a71-7e36-4e89-a3c7-f52788c501c1
 using Plots
 
-# ╔═╡ c76b6672-53df-4fd1-a39a-609248914446
-using PlutoUI, PlutoTeachingTools
+# ╔═╡ a47bf8a0-661e-4d5f-bd33-83ca1af10b36
+begin
+	using PlutoUI, PlutoTeachingTools
+	using BenchmarkTools
+	using LinearAlgebra
 
-# ╔═╡ 2aa60451-2e25-4b9d-ba0c-13b416f0d7af
-using BenchmarkTools
+	#using ThreadPinning
+	#pinthreads(:cores)
+	#openblas_pinthreads(:cores)
+	BLAS.set_num_threads(1)
+end
 
 # ╔═╡ 4e6cb703-b011-4f8a-8c9a-4863459ee7a2
 md"> Astro 528: High-Performance Scientific Computing for Astrophysics (Fall 2025)"
 
 # ╔═╡ aecdcdbc-5ef6-4a7b-bd65-d01ed1cfe497
-ChooseDisplayMode()
+WidthOverDocs()
 
 # ╔═╡ f7fdc34c-2c99-493d-9977-f206bb7a2810
 md"ToC on side $(@bind toc_aside CheckBox(;default=true))"
@@ -167,7 +173,7 @@ function calc_speedups_strong(nrows, ncols, npages)
 	runtimes = map(nthreads -> 
 			(@belapsed ThreadsX.map(i->benchmark_me(i,A=$A_list,x=$x_list),1:$npages,
 				basesize=ceil(Int64,size($A_list,3)//$nthreads) 
-				) samples=100 evals=5), 
+				) samples=20 evals=5), 
 			1:Threads.nthreads() )
 	runtime_serial = first(runtimes)
 	speedup_strong = runtime_serial./runtimes
@@ -181,10 +187,12 @@ end;
 
 # ╔═╡ a2def1e6-8fcb-4799-a836-9a13b4748c4e
 begin
+	runtimes_strong1_4 = calc_speedups_strong(nrows_strong1,ncols_strong1,4)
+	runtimes_strong1_8 = calc_speedups_strong(nrows_strong1,ncols_strong1,8)
 	runtimes_strong1_16 = calc_speedups_strong(nrows_strong1,ncols_strong1,16)
 	runtimes_strong1_64 = calc_speedups_strong(nrows_strong1,ncols_strong1,64)
 	runtimes_strong1_256 = calc_speedups_strong(nrows_strong1,ncols_strong1,256)
-	runtimes_strong1_1024 = calc_speedups_strong(nrows_strong1,ncols_strong1,1024)
+	#runtimes_strong1_1024 = calc_speedups_strong(nrows_strong1,ncols_strong1,1024)
 end;
 
 # ╔═╡ b558ad50-08b5-4ae8-a952-98fb1a618c1c
@@ -195,6 +203,8 @@ end;
 
 # ╔═╡ d0331007-a78f-436f-a517-f7268a1bf6f8
 begin
+	runtimes_strong2_4 = calc_speedups_strong(nrows_strong2,ncols_strong2,4)
+	runtimes_strong2_8 = calc_speedups_strong(nrows_strong2,ncols_strong2,8)
 	runtimes_strong2_16 = calc_speedups_strong(nrows_strong2,ncols_strong2,16)
 	runtimes_strong2_64 = calc_speedups_strong(nrows_strong2,ncols_strong2,64)
 	runtimes_strong2_256 = calc_speedups_strong(nrows_strong2,ncols_strong2,256)
@@ -207,14 +217,20 @@ md"## Strong scaling of dense matrix solve"
 # ╔═╡ dc124d75-c372-4703-84e9-e4bd464994d6
 let 
 	plt = plot(title="Speedup factor vs # Threads", xlabel="Number of Threads", ylabel="Speed-up Factor", legend=:topleft)
+	scatter!(1:Threads.nthreads(), runtimes_strong2_4, label="($nrows_strong2 x $ncols_strong2)x4",color=5)
+	plot!(1:Threads.nthreads(), runtimes_strong2_8, label=:none,color=6)
+	scatter!(1:Threads.nthreads(), runtimes_strong2_8, label="($nrows_strong2 x $ncols_strong2)x8",color=6)
+	plot!(1:Threads.nthreads(), runtimes_strong2_4, label=:none,color=5)
 	scatter!(1:Threads.nthreads(), runtimes_strong2_16, label="($nrows_strong2 x $ncols_strong2)x16",color=1)
 	plot!(1:Threads.nthreads(), runtimes_strong2_16,label=:none,color=1)
 	scatter!(1:Threads.nthreads(), runtimes_strong2_64, label="($nrows_strong2 x $ncols_strong2)x64",color=2)
 	plot!(1:Threads.nthreads(), runtimes_strong2_64,label=:none,color=2)
 	scatter!(1:Threads.nthreads(), runtimes_strong2_256, label="($nrows_strong2 x $ncols_strong2)x256", color=3)
 	plot!(1:Threads.nthreads(), runtimes_strong2_256, label=:none,color=3)
-	#scatter!(1:Threads.nthreads(), first(runtimes_strong2_1024)./runtimes_strong2_1024, label="($nrows_strong2 x $ncols_strong2)x1024",color=4)
-	#plot!(1:Threads.nthreads(), first(runtimes_strong2_1024)./runtimes_strong2_1024,label=:none, color=4)
+	if @isdefined runtimes_strong2_1024
+		scatter!(1:Threads.nthreads(), first(runtimes_strong2_1024)./runtimes_strong2_1024, label="($nrows_strong2 x $ncols_strong2)x1024",color=4)
+		plot!(1:Threads.nthreads(), first(runtimes_strong2_1024)./runtimes_strong2_1024,label=:none, color=4)
+	end
 	
 	plot!(1:Threads.nthreads(),1:Threads.nthreads(), label="Ideal",color=:black)
 end
@@ -222,15 +238,20 @@ end
 # ╔═╡ bdb82d77-579b-439c-8418-a6ba301b3fc9
 let 
 	plt = plot(title="Speedup factor vs # Threads", xlabel="Number of Threads", ylabel="Speed-up Factor", legend=:topleft)
+	scatter!(1:Threads.nthreads(), runtimes_strong1_4, label="($nrows_strong1 x $ncols_strong1)x4",color=5)
+	plot!(1:Threads.nthreads(), runtimes_strong1_4, label=:none,color=5)
+	scatter!(1:Threads.nthreads(), runtimes_strong1_8, label="($nrows_strong1 x $ncols_strong1)x8",color=6)
+	plot!(1:Threads.nthreads(), runtimes_strong1_8, label=:none,color=6)
 	scatter!(1:Threads.nthreads(), runtimes_strong1_16, label="($nrows_strong1 x $ncols_strong1)x16",color=1)
 	plot!(1:Threads.nthreads(), runtimes_strong1_16,label=:none,color=1)
 	scatter!(1:Threads.nthreads(), runtimes_strong1_64, label="($nrows_strong1 x $ncols_strong1)x64",color=2)
 	plot!(1:Threads.nthreads(), runtimes_strong1_64,label=:none,color=2)
 	scatter!(1:Threads.nthreads(), runtimes_strong1_256, label="($nrows_strong1 x $ncols_strong1)x256", color=3)
 	plot!(1:Threads.nthreads(), runtimes_strong1_256, label=:none,color=3)
-	scatter!(1:Threads.nthreads(), runtimes_strong1_1024, label="($nrows_strong1 x $ncols_strong1)x1024",color=4)
-	plot!(1:Threads.nthreads(), runtimes_strong1_1024,label=:none, color=4)
-	
+	if @isdefined runtimes_strong1_1024
+		scatter!(1:Threads.nthreads(), runtimes_strong1_1024, label="($nrows_strong1 x $ncols_strong1)x1024",color=4)
+		plot!(1:Threads.nthreads(), runtimes_strong1_1024,label=:none, color=4)
+	end
 	plot!(1:Threads.nthreads(),1:Threads.nthreads(), label="Ideal",color=:black)
 end
 
@@ -249,17 +270,19 @@ function calc_speedups_weak(nrows, ncols, npages)
 	x_list = randn(nrows,npages)
 	runtimes = map(nthreads -> 
 			(@belapsed ThreadsX.map(i->benchmark_me(i,A=$A_list,x=$x_list),1:(floor(Int64,$npages//Threads.nthreads())*$nthreads),
-				basesize=ceil(Int64,(floor(Int64,$npages//Threads.nthreads())*$nthreads)//$nthreads) 
-				) samples=100 evals=5), 
+				basesize=max(1,ceil(Int64,(floor(Int64,$npages//Threads.nthreads())*$nthreads)//$nthreads) 
+				)) samples=20 evals=5), 
 			1:Threads.nthreads() )
 	runtimes_serial = map(nthreads -> 
-			(@belapsed map(i->benchmark_me(i,A=$A_list,x=$x_list),1:(floor(Int64,$npages//Threads.nthreads())*$nthreads)) samples=100 evals=1), 	
+			(@belapsed map(i->benchmark_me(i,A=$A_list,x=$x_list),1:(floor(Int64,$npages//Threads.nthreads())*$nthreads)) samples=20 evals=1), 	
 		1:Threads.nthreads() )
 	speedup_weak = runtimes_serial./runtimes
 end
 
 # ╔═╡ bdc51a99-0298-4bc7-8780-6f9542138524
 begin
+	runtimes_weak1_4 = calc_speedups_weak(nrows_weak1,ncols_weak1,4)
+	runtimes_weak1_8 = calc_speedups_weak(nrows_weak1,ncols_weak1,8)
 	runtimes_weak1_16 = calc_speedups_weak(nrows_weak1,ncols_weak1,16)
 	runtimes_weak1_64 = calc_speedups_weak(nrows_weak1,ncols_weak1,64)
 	runtimes_weak1_256 = calc_speedups_weak(nrows_weak1,ncols_weak1,256)
@@ -269,13 +292,15 @@ end;
 # ╔═╡ 6130a5f8-77b0-4a5e-8e87-4db1887328c8
 let 
 	plt = plot(title="Speedup factor vs # Threads", xlabel="Number of Threads", ylabel="Speed-up Factor", legend=:topleft)
+	scatter!(1:Threads.nthreads(), runtimes_weak1_8, label="($nrows_weak1 x $ncols_weak1)xN",color=5)
+	plot!(1:Threads.nthreads(), runtimes_weak1_8,label=:none,color=5)
 	scatter!(1:Threads.nthreads(), runtimes_weak1_16, label="($nrows_weak1 x $ncols_weak1)x2N",color=1)
 	plot!(1:Threads.nthreads(), runtimes_weak1_16,label=:none,color=1)
-	scatter!(1:Threads.nthreads(), runtimes_weak1_64, label="($nrows_weak1 x $ncols_weak1)x16N",color=2)
+	scatter!(1:Threads.nthreads(), runtimes_weak1_64, label="($nrows_weak1 x $ncols_weak1)x4N",color=2)
 	plot!(1:Threads.nthreads(), runtimes_weak1_64,label=:none,color=2)
-	scatter!(1:Threads.nthreads(), runtimes_weak1_256, label="($nrows_weak1 x $ncols_weak1)x64N", color=3)
+	scatter!(1:Threads.nthreads(), runtimes_weak1_256, label="($nrows_weak1 x $ncols_weak1)x16N", color=3)
 	plot!(1:Threads.nthreads(), runtimes_weak1_256, label=:none,color=3)
-	scatter!(1:Threads.nthreads(), runtimes_weak1_1024, label="($nrows_weak1 x $ncols_weak1)x256N",color=4)
+	scatter!(1:Threads.nthreads(), runtimes_weak1_1024, label="($nrows_weak1 x $ncols_weak1)x64N",color=4)
 	plot!(1:Threads.nthreads(), runtimes_weak1_1024,label=:none, color=4)
 	
 	plot!(1:Threads.nthreads(),1:Threads.nthreads(), label="Ideal",color=:black)
@@ -449,6 +474,62 @@ md"""
 - Making/saving plots
 """
 
+# ╔═╡ 3605e98a-4f66-407a-92ff-645274a692a8
+md"""
+### Avoid excessive print statements
+- Printing to terminal (or notebook) is suprisingly slow
+- Affects benchmarking/profiling results
+- Use [Logging](https://docs.julialang.org/en/v1/stdlib/Logging/) instead
+  - Stores and buffers log efficiently
+  - You can easily turn on/off
+  - You can easily redirect STDIO or file
+- Use if's to only provide output you actually want to look at
+"""
+
+# ╔═╡ eb99936d-9001-4c80-8523-c4a17b46f985
+for i in 1:50_000
+	x = randn()
+	y = x*x
+	if abs(x)>=4
+		@warn "abs(x) is big" x f(x)=y
+	end
+end
+
+# ╔═╡ c970fe6b-ac17-4965-9c29-5deeae9970a2
+md"""
+#### Logging overview
+```julia
+@debug message  [key=value | value ...]
+@info  message  [key=value | value ...]
+@warn  message  [key=value | value ...]
+@error message  [key=value | value ...]
+
+@logmsg level message [key=value | value ...]
+```
+
+Can turn off unnecessary messages
+```julia
+using Logging
+
+# Logger to print any log messages with level >= Debug to stderr
+debuglogger = ConsoleLogger(stderr, Logging.Debug)
+
+# Set the global logger
+global_logger(debuglogger)
+```
+
+Or can send logs to a file
+```julia
+io = open("log.txt", "w+")
+logger = SimpleLogger(io)
+with_logger(logger) do
+           @info("a context specific log message")
+       end
+flush(io)
+close(io)
+```
+"""
+
 # ╔═╡ 4973ed03-3861-4aad-92c6-b7b5458b9f12
 md"""
 ## Code Organization
@@ -583,6 +664,12 @@ x_range = x_min:dx:x_max
 x_points = collect(xrange)
 ```
 """
+
+# ╔═╡ 8d96fafa-33db-4761-994a-831b2225c85c
+range(0,stop=10,step=1)
+
+# ╔═╡ f3cc60cc-372f-4fba-be05-d2e457c77448
+range(0,stop=10,length=11)
 
 # ╔═╡ 83cef5f0-b56e-4fd9-85db-81206bcd9b1c
 md"""
@@ -890,10 +977,128 @@ if false
 	runtimes_blas
 end
 
+# ╔═╡ 8da19623-5f44-4936-a34e-344f578a3b47
+md"""
+# Multi-threading of BLAS (not working)
+"""
+
+# ╔═╡ 2dc9ad14-dd1c-4ec2-9261-6e945fa9bd76
+function benchmark_me_blas(i::Integer, nt::Integer; A::AbstractArray, x::AbstractArray, out::AbstractArray)
+	@assert 1 <= i <= size(A,3)
+	@assert size(A,2) == size(x,1)
+	#@assert 1 <= nt <= 2*Sys.CPU_THREADS
+	#BLAS.set_num_threads(nt)	
+	@fastmath @inbounds out .= view(A,:,:,i) * view(x,:,i)
+end
+
+# ╔═╡ c27fbe8e-366d-421d-9544-da98c9023882
+function calc_speedups_strong_blas_tmp(nrows::Integer, ncols::Integer, npages::Integer)
+	A_list = randn(nrows,ncols,npages)
+	x_list = randn(nrows,npages)
+	tmp_output = zeros(ncols)
+	nt_pre_call = BLAS.get_num_threads()
+	runtimes = map(nthreads -> 
+				let
+				BLAS.set_num_threads(nthreads);
+				i = 1;
+				(@belapsed #=map(i->  =# benchmark_me_blas(i,nthreads,A=A_list,x=x_list,out=tmp_output)  #=, 1:$npages  ) =#	 samples=20 evals=5 ) 
+				 end,  
+			1:Threads.nthreads() )
+	BLAS.set_num_threads(nt_pre_call)	
+	runtime_serial = first(runtimes)
+	(runtime_serial,runtimes)
+	#@info runtimes
+	#@info runtime_serial
+	speedup_strong = runtime_serial./runtimes
+end
+
+# ╔═╡ cbbc943a-bcbc-47dd-afb2-18b1a5b2306d
+function calc_speedups_strong_blas(nrows::Integer, ncols::Integer, npages::Integer)
+	A_list = randn(nrows,ncols,npages)
+	x_list = randn(nrows,npages)
+	tmp_output = zeros(ncols)
+	nt_pre_call = BLAS.get_num_threads()
+	runtimes = map(nthreads -> 
+			(@belapsed map(i-> benchmark_me_blas(i,$nthreads,A=$A_list,x=$x_list,out=$tmp_output),1:$npages ) samples=20 evals=5), 
+			1:Threads.nthreads() )
+	BLAS.set_num_threads(nt_pre_call)	
+	runtime_serial = first(runtimes)
+	speedup_strong = runtime_serial./runtimes
+end
+
+# ╔═╡ b8a137e6-bcef-4b8d-86b7-80298d60e4f9
+begin 
+	runtimes_strong1_blas_4 = calc_speedups_strong_blas(nrows_strong1,ncols_strong1,4)
+	runtimes_strong1_blas_16 = calc_speedups_strong_blas(nrows_strong1,ncols_strong1,16)
+	runtimes_strong1_blas_64 = calc_speedups_strong_blas(nrows_strong1,ncols_strong1,64)
+	runtimes_strong1_blas_256 = calc_speedups_strong_blas(nrows_strong1,ncols_strong1,256)
+	#runtimes_strong1_blas_1024 = calc_speedups_strong_blas(nrows_strong1,ncols_strong1,16)
+end;
+
+# ╔═╡ f6b637ef-f2d4-4cff-bf48-92499bdf9ab7
+function calc_speedups_weak_blas(nrows::Integer, ncols::Integer, npages::Integer)
+	nt_pre_call = BLAS.get_num_threads()
+	A_list = randn(nrows,ncols,npages)
+	x_list = randn(nrows,npages)
+	tmp_output = zeros(ncols)
+	runtimes = map(nthreads -> 
+			(@belapsed map(i->benchmark_me_blas(i,$nthreads,A=$A_list,x=$x_list,out=$tmp_output),1:(floor(Int64,$npages//Threads.nthreads())*$nthreads),
+				 
+				) samples=20 evals=5), 
+			1:Threads.nthreads() )
+	BLAS.set_num_threads(nt_pre_call)	
+	runtimes_serial = map(nthreads -> 
+			(@belapsed map(i->benchmark_me_blas(i,1, A=$A_list,x=$x_list,out=$tmp_output),1:(floor(Int64,$npages//Threads.nthreads())*$nthreads)) samples=20 evals=1), 	
+		1:Threads.nthreads() )
+	speedup_weak = runtimes_serial./runtimes
+end
+
+# ╔═╡ 23374858-0b3a-4e62-a574-3fc449c657a0
+begin 
+	runtimes_weak1_blas_4 = calc_speedups_weak_blas(nrows_weak1,ncols_weak1,4)
+	runtimes_weak1_blas_16 = calc_speedups_weak_blas(nrows_weak1,ncols_weak1,16)
+	runtimes_weak1_blas_64 = calc_speedups_weak_blas(nrows_weak1,ncols_weak1,64)
+	runtimes_weak1_blas_256 = calc_speedups_weak_blas(nrows_weak1,ncols_weak1,256)
+	#runtimes_weak1_blas_1024 = calc_speedups_weak_blas(nrows_weak1,ncols_weak1,16)
+end;
+
+# ╔═╡ 28cb16bb-cb03-405f-9c2c-ed62d4480ae6
+let 
+	plt = plot(title="Speedup factor vs # Threads (Multi-threaded BLAS)", xlabel="Number of Threads", ylabel="Speed-up Factor", legend=:topleft)
+	scatter!(1:Threads.nthreads(), runtimes_strong1_blas_4, label="($nrows_strong1 x $ncols_strong1)x4",color=5)
+	plot!(1:Threads.nthreads(), runtimes_strong1_blas_4, label=:none,color=5)
+	scatter!(1:Threads.nthreads(), runtimes_strong1_blas_16, label="($nrows_strong1 x $ncols_strong1)x16",color=1)
+	plot!(1:Threads.nthreads(), runtimes_strong1_blas_16,label=:none,color=1)
+	scatter!(1:Threads.nthreads(), runtimes_strong1_blas_64, label="($nrows_strong1 x $ncols_strong1)x64",color=2)
+	plot!(1:Threads.nthreads(), runtimes_strong1_blas_64,label=:none,color=2)
+	scatter!(1:Threads.nthreads(), runtimes_strong1_blas_256, label="($nrows_strong1 x $ncols_strong1)x256", color=3)
+	plot!(1:Threads.nthreads(), runtimes_strong1_blas_256, label=:none,color=3)
+	#scatter!(1:Threads.nthreads(), runtimes_strong1_blas_1024, label="($nrows_strong1 x $ncols_strong1)x1024",color=4)
+	#plot!(1:Threads.nthreads(), runtimes_strong1_blas_1024,label=:none, color=4)
+	
+	plot!(1:Threads.nthreads(),1:Threads.nthreads(), label="Ideal",color=:black)
+end
+
+# ╔═╡ ba129f06-6c4e-493c-b1b5-df95dba3c939
+let 
+	plt = plot(title="Speedup factor vs # Threads (Multi-threaded BLAS)", xlabel="Number of Threads", ylabel="Speed-up Factor", legend=:topleft)
+	scatter!(1:Threads.nthreads(), runtimes_weak1_blas_16, label="($nrows_weak1 x $ncols_weak1)x2N",color=1)
+	plot!(1:Threads.nthreads(), runtimes_weak1_blas_16,label=:none,color=1)
+	scatter!(1:Threads.nthreads(), runtimes_weak1_blas_64, label="($nrows_weak1 x $ncols_weak1)x16N",color=2)
+	plot!(1:Threads.nthreads(), runtimes_weak1_blas_64,label=:none,color=2)
+	scatter!(1:Threads.nthreads(), runtimes_weak1_blas_256, label="($nrows_weak1 x $ncols_weak1)x64N", color=3)
+	plot!(1:Threads.nthreads(), runtimes_weak1_blas_256, label=:none,color=3)
+	#scatter!(1:Threads.nthreads(), runtimes_weak1_blas_1024, label="($nrows_weak1 x $ncols_weak1)x256N",color=4)
+	#plot!(1:Threads.nthreads(), runtimes_weak1_blas_1024,label=:none, color=4)
+	
+	plot!(1:Threads.nthreads(),1:Threads.nthreads(), label="Ideal",color=:black)
+end
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
@@ -915,7 +1120,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "47e7765945c991087cba746021b4569ff8fe5c99"
+project_hash = "83e7a5f5dbb176cb5b0a19fd0cca20d10befc7a1"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -2265,7 +2470,7 @@ version = "1.4.1+1"
 # ╟─873791ba-de27-4097-8903-9a450c7bd44c
 # ╟─89e2bf55-fe61-4c9d-8e6b-ce1356c8b7a6
 # ╟─98017585-6cfc-4ae4-9f5b-9775c0eb406f
-# ╠═3750558c-d86c-461c-afc7-cfa8e4d330ad
+# ╟─3750558c-d86c-461c-afc7-cfa8e4d330ad
 # ╟─0a5987aa-d40e-44f7-b75c-722a2436f7f9
 # ╟─d61f4dbb-7181-4542-97ca-48a8fe7dd87a
 # ╟─f0132ca2-b1ce-413f-8653-f2d86206f99e
@@ -2273,7 +2478,7 @@ version = "1.4.1+1"
 # ╟─f9b69aeb-5fc8-46f0-a80b-48e5246e0cb9
 # ╟─ca5ac963-b6fe-43fc-b082-c91c0542b8cf
 # ╠═8e7973b9-cb7a-42ef-bbd8-bae976ac66b1
-# ╠═1a39e7c8-6925-4340-8961-1480f6df64d6
+# ╟─1a39e7c8-6925-4340-8961-1480f6df64d6
 # ╟─aa7eba99-0cfb-4d05-a9ef-d084a2991a2c
 # ╟─4c8ea632-b824-4227-8e92-3b7a92052525
 # ╟─a2def1e6-8fcb-4799-a836-9a13b4748c4e
@@ -2284,7 +2489,7 @@ version = "1.4.1+1"
 # ╟─bdb82d77-579b-439c-8418-a6ba301b3fc9
 # ╟─7cd7ea26-ded7-4f73-b56a-4b24bdfc4449
 # ╟─6130a5f8-77b0-4a5e-8e87-4db1887328c8
-# ╠═4257a1f5-2697-4849-9f90-d0f94c3145ff
+# ╟─4257a1f5-2697-4849-9f90-d0f94c3145ff
 # ╟─880c72dd-4a37-44e7-b7eb-e73faf9b40a3
 # ╟─bdc51a99-0298-4bc7-8780-6f9542138524
 # ╟─f42f0871-55e0-4d81-be20-2ff26cefa93a
@@ -2303,6 +2508,9 @@ version = "1.4.1+1"
 # ╟─33fcbd8e-7ff0-48c8-8846-740daf5e437f
 # ╟─cd940357-23d5-4c26-8e4c-507dcfe06f3c
 # ╟─739c2983-faee-43e6-bd02-7864cd64337d
+# ╟─3605e98a-4f66-407a-92ff-645274a692a8
+# ╠═eb99936d-9001-4c80-8523-c4a17b46f985
+# ╟─c970fe6b-ac17-4965-9c29-5deeae9970a2
 # ╟─4973ed03-3861-4aad-92c6-b7b5458b9f12
 # ╟─66e58a6d-4fcc-498b-b2e5-91ad365d7730
 # ╟─fd7d7f56-9782-45d1-90f2-d0cd4e600938
@@ -2320,6 +2528,8 @@ version = "1.4.1+1"
 # ╟─e9ea91d4-6458-4e29-a0b4-87335ed02752
 # ╟─81baf9de-e0ec-4183-b45c-acb4563e1b60
 # ╟─7ff0aad1-93a7-4200-a05a-15fbdb52e8b6
+# ╠═8d96fafa-33db-4761-994a-831b2225c85c
+# ╠═f3cc60cc-372f-4fba-be05-d2e457c77448
 # ╟─83cef5f0-b56e-4fd9-85db-81206bcd9b1c
 # ╟─af5aa27d-137d-4476-b872-409c7a8eb95f
 # ╟─b0aa20c7-e17d-4d0a-88fb-6234d8a4848a
@@ -2352,8 +2562,16 @@ version = "1.4.1+1"
 # ╟─e4f9c2ef-f0a4-43c3-85e6-ee833f452e70
 # ╟─774b3bdc-7f6e-4d1b-878e-d2f7cb0b5625
 # ╟─c9013543-de41-4ca7-9e62-046b169b95d4
-# ╠═c76b6672-53df-4fd1-a39a-609248914446
-# ╠═2aa60451-2e25-4b9d-ba0c-13b416f0d7af
+# ╟─a47bf8a0-661e-4d5f-bd33-83ca1af10b36
 # ╟─275d2ab8-68b3-4139-b34e-a2fef2333ed9
+# ╟─8da19623-5f44-4936-a34e-344f578a3b47
+# ╠═2dc9ad14-dd1c-4ec2-9261-6e945fa9bd76
+# ╠═c27fbe8e-366d-421d-9544-da98c9023882
+# ╠═cbbc943a-bcbc-47dd-afb2-18b1a5b2306d
+# ╠═b8a137e6-bcef-4b8d-86b7-80298d60e4f9
+# ╠═f6b637ef-f2d4-4cff-bf48-92499bdf9ab7
+# ╠═23374858-0b3a-4e62-a574-3fc449c657a0
+# ╟─28cb16bb-cb03-405f-9c2c-ed62d4480ae6
+# ╟─ba129f06-6c4e-493c-b1b5-df95dba3c939
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

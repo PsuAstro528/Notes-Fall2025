@@ -40,24 +40,19 @@ TableOfContents(aside=toc_aside)
 
 # ╔═╡ 545d6631-9a06-4e59-a306-cddc6d405689
 md"""
-# Week 10 Discussion & Q&A:
+# Week 10:
 ### Parallelization for Hardware Accelerators (e.g., GPUs) 
 """
-
-# ╔═╡ 966b8013-e804-4fe3-89ea-90d07df41d16
-with_terminal() do
-	CUDA.versioninfo()
-end
-
-# ╔═╡ 4d6df8fc-80f0-4b19-a014-bc626e068c92
-md"
-# P100 GPU layout
-![P100 Block diagram](https://cdn.arstechnica.net/wp-content/uploads/sites/3/2016/04/gp100_block_diagram-1.png)"
 
 # ╔═╡ fbfef453-7ef1-4ceb-8f51-2732766cacc9
 md"### CPU chip layout
 
 ![Intel CPU die shot](https://cdn.arstechnica.net/wp-content/uploads/2011/11/core_i7_lga_2011_die-4ec188e-intro.jpg)"
+
+# ╔═╡ 4d6df8fc-80f0-4b19-a014-bc626e068c92
+md"
+# P100 GPU layout
+![P100 Block diagram](https://cdn.arstechnica.net/wp-content/uploads/sites/3/2016/04/gp100_block_diagram-1.png)"
 
 # ╔═╡ e7fc1c20-6404-45e8-8b10-80f0fc7cee09
 md"""
@@ -77,6 +72,11 @@ md"""
 
 # ╔═╡ 7cd03755-04c5-4bd7-8d10-2c563dc377a5
 md"## CUDA & OpenCL"
+
+# ╔═╡ 966b8013-e804-4fe3-89ea-90d07df41d16
+with_terminal() do
+	CUDA.versioninfo()
+end
 
 # ╔═╡ ddcb4895-9357-417a-ad72-c100c83d1799
 [CUDA.capability(dev) for dev in CUDA.devices()]
@@ -179,7 +179,7 @@ with_terminal() do
 	    return nothing
 	end
 	
-	@cuda threads=16 gpu_add2_print!(y_d, x_d)
+	@cuda threads=32 gpu_add2_print!(y_d, x_d)
 	synchronize()
 end
 
@@ -197,14 +197,14 @@ end
 # ╔═╡ cf452f9c-ec9f-48dd-8ab3-25310649ebc2
 let
 	fill!(y_d, 2)
-	@cuda threads=256 gpu_add2!(y_d, x_d)
+	@cuda threads=16 gpu_add2!(y_d, x_d)
 	@test all(Array(y_d) .== 3.0f0)
 end
 
 # ╔═╡ ccd374b3-8c80-4a01-a6e0-b4fdd5a136e3
 function bench_gpu2!(y, x)
     CUDA.@sync begin
-        @cuda threads=256 gpu_add2!(y, x)
+        @cuda threads=1024  gpu_add2!(y, x)
     end
 end
 
@@ -345,7 +345,7 @@ CUDA.@allowscalar rand_nums_d[1]
 md"## A more substantial function on GPU"
 
 # ╔═╡ 57ee851f-3515-4528-baef-a961cbaf058d
-M = 1_000
+M = 1_000_000
 
 # ╔═╡ 0c53f4ee-7e7e-431f-acaf-78c0da9b31c1
 md"## GPU Reductions"
@@ -620,12 +620,12 @@ end
 # ╟─aecdcdbc-5ef6-4a7b-bd65-d01ed1cfe497
 # ╟─f7fdc34c-2c99-493d-9977-f206bb7a2810
 # ╟─545d6631-9a06-4e59-a306-cddc6d405689
-# ╠═966b8013-e804-4fe3-89ea-90d07df41d16
-# ╟─4d6df8fc-80f0-4b19-a014-bc626e068c92
 # ╟─fbfef453-7ef1-4ceb-8f51-2732766cacc9
+# ╟─4d6df8fc-80f0-4b19-a014-bc626e068c92
 # ╟─e7fc1c20-6404-45e8-8b10-80f0fc7cee09
 # ╟─5d30ac34-b58c-4360-88e4-ec3869210f26
 # ╟─7cd03755-04c5-4bd7-8d10-2c563dc377a5
+# ╠═966b8013-e804-4fe3-89ea-90d07df41d16
 # ╠═ddcb4895-9357-417a-ad72-c100c83d1799
 # ╟─2e192dec-84c0-4e60-af9d-1da9286945e3
 # ╠═91c94540-1257-47fa-bafb-2ea66830b726

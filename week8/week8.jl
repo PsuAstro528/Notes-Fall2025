@@ -301,6 +301,130 @@ md"""
 - Hardware Accelerator (Lab 8)
 """
 
+# ╔═╡ 59581b03-f50b-4313-b5bd-60cd1dcf0467
+md"# Parallelizing Julia code with multiple processes"
+
+# ╔═╡ f8dd70d1-bb47-450d-b84b-3f3d00a98c4c
+md"""
+### Starting Julia with multiple processes
+- Request multiple cores (either portal or via Slurm job (`sbatch`/`salloc`))
+#### If all processors are on one node:
+```shell
+>julia -p 4
+```
+or 
+```julia
+julia> using Distributed
+julia> addprocs(4)
+```
+"""
+
+# ╔═╡ 9026284e-e757-4451-8c83-3f7dff08d3b1
+md"""
+If all processors are on one node:
+```shell
+> julia -p 4
+```
+or 
+```julia
+julia> using Distributed
+julia> addprocs(4)
+```
+
+"""
+
+# ╔═╡ 4b999852-8a3c-46e6-b2a0-fe360ef6ecf0
+md"""
+#### If processors may span multiple nodes: 
+```shell
+> julia --machine-file machinefile
+```
+where machine file is a text file with a list of hostnames, one per line, e.g.,
+```text
+p-sc-2001
+3*p-sc-2002
+```
+or 
+```julia
+julia> using Distributed
+julia> addprocs([("p-sc-2001",2),("p-sc-2002",2)], exename="/storage/icds/RISE/sw8/julia/julia-1.11.2/bin/julia", exeflags=["--project=$(Base.active_project())",] )
+```
+Above `p-sc-2001` and `p-sc-2002` are the hostnames of two nodes that we've been allocated cores on.  Since ssh needs to find the julia executable before we have loaded any modules or run a setup script, need to give path explicitly to ensure same version of julia running on all nodes.
+"""
+
+# ╔═╡ 97c06dab-cb7f-4a12-9f64-2a6824147d7f
+md"""
+### Hybrid strategy, four threads on each node
+```shell
+> julia -t 4 --machine-file machinefile
+```
+or
+```julia
+julia> using Distributed
+julia> addprocs(["p-sc-2001","p-sc-2002"], exename="/storage/icds/RISE/sw8/julia/julia-1.11.2/bin/julia", exeflags=["--project=$(Base.active_project())","-t 4 "] )
+```
+"""
+
+# ╔═╡ d383f3df-5425-4061-90eb-36f66b67246d
+md"""
+#### Prevent processes from competing to precompile
+We want to avoid multiple processors downloading/installing/precompiling packages at the same time (since file system is shared across nodes).  Can avoid this by: 
+```julia
+import Pkg
+Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true   # Tell Julia package manager not to download an updated registry for speed's sake
+Pkg.instantiate()       # Make sure all packages are installed (if needed)
+Pkg.precompile()        # Make sure all packages are compiled
+```
+Only start assigning work to worker processors after know there won't be updates to the project environment or a need to precompile packages.
+"""
+
+# ╔═╡ 1566999e-a44d-4736-b769-be35fd9cd388
+md"""
+### Loading code on each worker
+- `@everywhere using SharedArrays`
+- `@everywhere square(x) = x*x`
+- `@everywhere include("my_code.jl")`
+"""
+
+# ╔═╡ 5ce02e16-d700-4eb5-b22e-5cd3b4cdd046
+md"""
+### Getting data from worker
+```julia
+x = 17
+ref = @spawn f(x)
+y = fetch(ref)
+```
+"""
+
+# ╔═╡ 4734603c-f9d4-48e5-a06b-1eb8c8b4d9f2
+md"""
+### Moving data to/from workers
+- As function argument (e.g., `@spawn f(x)`)
+- Explictly
+```julia
+data = CSV.read("input.csv")
+for p in workers()
+    remotecall_fetch(()->data, p)
+end
+```
+- [ParallelDataTransfer.jl](https://github.com/ChrisRackauckas/ParallelDataTransfer.jl)
+   - `@passobj 1 workers() data`
+"""
+
+# ╔═╡ 93bfc0ae-9ff6-43f1-af4f-22765ef635b2
+md"""
+### Commons paralle programming pitfalls
+- Accessing data before another process is guaranteed to have finished writing to it
+- Race conditions (two processes each waiting on each other)
+- False sharing of data (very poor cache performance)
+- Processes migrating from one core to another
+"""
+
+# ╔═╡ 019c5242-448e-4425-97e7-0deeaf1ffd83
+md"""
+[Dagger.jl](https://github.com/JuliaParallel/Dagger.jl) can ease burden of paralel programming for more complex workflows.
+"""
+
 # ╔═╡ 33fcbd8e-7ff0-48c8-8846-740daf5e437f
 md"""
 # Common Suggestions from Code Reviews
@@ -498,130 +622,6 @@ for i in 1:100
   push!(output,i)
 end
 ```
-"""
-
-# ╔═╡ 59581b03-f50b-4313-b5bd-60cd1dcf0467
-md"# Parallelizing Julia code with multiple processes"
-
-# ╔═╡ f8dd70d1-bb47-450d-b84b-3f3d00a98c4c
-md"""
-### Starting Julia with multiple processes
-- Request multiple cores (either portal or via Slurm job (`sbatch`/`salloc`))
-#### If all processors are on one node:
-```shell
->julia -p 4
-```
-or 
-```julia
-julia> using Distributed
-julia> addprocs(4)
-```
-"""
-
-# ╔═╡ 9026284e-e757-4451-8c83-3f7dff08d3b1
-md"""
-If all processors are on one node:
-```shell
-> julia -p 4
-```
-or 
-```julia
-julia> using Distributed
-julia> addprocs(4)
-```
-
-"""
-
-# ╔═╡ 4b999852-8a3c-46e6-b2a0-fe360ef6ecf0
-md"""
-#### If processors may span multiple nodes: 
-```shell
-> julia --machine-file machinefile
-```
-where machine file is a text file with a list of hostnames, one per line, e.g.,
-```text
-p-sc-2001
-3*p-sc-2002
-```
-or 
-```julia
-julia> using Distributed
-julia> addprocs([("p-sc-2001",2),("p-sc-2002",2)], exename="/storage/icds/RISE/sw8/julia/julia-1.11.2/bin/julia", exeflags=["--project=$(Base.active_project())",] )
-```
-Above `p-sc-2001` and `p-sc-2002` are the hostnames of two nodes that we've been allocated cores on.  Since ssh needs to find the julia executable before we have loaded any modules or run a setup script, need to give path explicitly to ensure same version of julia running on all nodes.
-"""
-
-# ╔═╡ 97c06dab-cb7f-4a12-9f64-2a6824147d7f
-md"""
-### Hybrid strategy, four threads on each node
-```shell
-> julia -t 4 --machine-file machinefile
-```
-or
-```julia
-julia> using Distributed
-julia> addprocs(["p-sc-2001","p-sc-2002"], exename="/storage/icds/RISE/sw8/julia/julia-1.11.2/bin/julia", exeflags=["--project=$(Base.active_project())","-t 4 "] )
-```
-"""
-
-# ╔═╡ d383f3df-5425-4061-90eb-36f66b67246d
-md"""
-#### Prevent processes from competing to precompile
-We want to avoid multiple processors downloading/installing/precompiling packages at the same time (since file system is shared across nodes).  Can avoid this by: 
-```julia
-import Pkg
-Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true   # Tell Julia package manager not to download an updated registry for speed's sake
-Pkg.instantiate()       # Make sure all packages are installed (if needed)
-Pkg.precompile()        # Make sure all packages are compiled
-```
-Only start assigning work to worker processors after know there won't be updates to the project environment or a need to precompile packages.
-"""
-
-# ╔═╡ 1566999e-a44d-4736-b769-be35fd9cd388
-md"""
-### Loading code on each worker
-- `@everywhere using SharedArrays`
-- `@everywhere square(x) = x*x`
-- `@everywhere include("my_code.jl")`
-"""
-
-# ╔═╡ 5ce02e16-d700-4eb5-b22e-5cd3b4cdd046
-md"""
-### Getting data from worker
-```julia
-x = 17
-ref = @spawn f(x)
-y = fetch(ref)
-```
-"""
-
-# ╔═╡ 4734603c-f9d4-48e5-a06b-1eb8c8b4d9f2
-md"""
-### Moving data to/from workers
-- As function argument (e.g., `@spawn f(x)`)
-- Explictly
-```julia
-data = CSV.read("input.csv")
-for p in workers()
-    remotecall_fetch(()->data, p)
-end
-```
-- [ParallelDataTransfer.jl](https://github.com/ChrisRackauckas/ParallelDataTransfer.jl)
-   - `@passobj 1 workers() data`
-"""
-
-# ╔═╡ 93bfc0ae-9ff6-43f1-af4f-22765ef635b2
-md"""
-### Commons paralle programming pitfalls
-- Accessing data before another process is guaranteed to have finished writing to it
-- Race conditions (two processes each waiting on each other)
-- False sharing of data (very poor cache performance)
-- Processes migrating from one core to another
-"""
-
-# ╔═╡ 019c5242-448e-4425-97e7-0deeaf1ffd83
-md"""
-[Dagger.jl](https://github.com/JuliaParallel/Dagger.jl) can ease burden of paralel programming for more complex workflows.
 """
 
 # ╔═╡ cab2144d-d8f1-41f2-9ccc-53c1ad0ae5c5
